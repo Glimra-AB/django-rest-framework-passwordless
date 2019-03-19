@@ -3,13 +3,14 @@ from django.utils.translation import ugettext_lazy as _
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.core.validators import RegexValidator
+from django.utils import timezone
 from rest_framework import serializers
-from drfpasswordless.models import CallbackToken
+from drfpasswordless.models import CallbackToken, RefreshToken
 from drfpasswordless.settings import api_settings
-from drfpasswordless.utils import authenticate_by_token, verify_user_alias, validate_token_age
+from drfpasswordless.utils import verify_user_alias
 
 logger = logging.getLogger(__name__)
-User = get_user_model()
+UserModel = get_user_model()
 
 
 class TokenField(serializers.CharField):
@@ -17,8 +18,8 @@ class TokenField(serializers.CharField):
         'required': _('Invalid Token'),
         'invalid': _('Invalid Token'),
         'blank': _('Invalid Token'),
-        'max_length': _('Tokens are {max_length} digits long.'),
-        'min_length': _('Tokens are {min_length} digits long.')
+        'max_length': _('Tokens are {max_length} characters long.'),
+        'min_length': _('Tokens are {min_length} characters long.')
     }
 
 
@@ -36,17 +37,16 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
         alias = attrs.get(self.alias_type)
 
         if alias:
-            # Create or authenticate a user
-            # Return THem
+            # Create or authenticate a user and return it
 
             if api_settings.PASSWORDLESS_REGISTER_NEW_USERS is True:
                 # If new aliases should register new users.
-                user, created = User.objects.get_or_create(**{self.alias_type: alias})
+                user, created = UserModel.objects.get_or_create(**{self.alias_type: alias})
             else:
                 # If new aliases should not register new users.
                 try:
-                    user = User.objects.get(**{self.alias_type: alias})
-                except User.DoesNotExist:
+                    user = UserModel.objects.get(**{self.alias_type: alias})
+                except UserModel.DoesNotExist:
                     user = None
 
             if user:
@@ -145,62 +145,102 @@ class MobileVerificationSerializer(AbstractBaseAliasVerificationSerializer):
 Callback Token
 """
 
-
-def token_age_validator(value):
+def token_valid_for_login(token, expiry_time):
     """
-    Check token age
-    Makes sure a token is within the proper expiration datetime window.
+    This validates the expiration time for both CallbackTokens and RefreshTokens
+    (currently no other checks are needed, the token can only get here if it's is_active)
     """
-    valid_token = validate_token_age(value)
-    if not valid_token:
-        raise serializers.ValidationError("The token you entered isn't valid.")
-    return value
+    age_in_seconds = (timezone.now() - token.created_at).total_seconds()
 
+    if age_in_seconds <= expiry_time:
+            return True
+    else:
+        # Expired, so mark is_active false. It's not really necessary for invalidating the token as expiration time is always checked,
+        # but it allows another token to be created with the same key at least. A cronjob should prune the expired tokens from the db.
+        token.is_active = False
+        token.save()
+        return False
 
 class AbstractBaseCallbackTokenSerializer(serializers.Serializer):
     """
     Abstract class inspired by DRF's own token serializer.
     Returns a user if valid, None or a message if not.
     """
-    token = TokenField(min_length=6, max_length=6, validators=[token_age_validator])
+    token = TokenField(min_length=6, max_length=6)
 
 
 class CallbackTokenAuthSerializer(AbstractBaseCallbackTokenSerializer):
 
     def validate(self, attrs):
-        callback_token = attrs.get('token', None)
+        try:
+            # The key + is_active is unique so we can only get one result here
+            token = CallbackToken.objects.get(key=attrs.get('token', None), is_active=True)
 
-        token = CallbackToken.objects.get(key=callback_token, is_active=True)
-
-        if token:
-            # Check the token type for our uni-auth method.
-            # authenticates and checks the expiry of the callback token.
-            user = authenticate_by_token(token)
-            if user:
-                if not user.is_active:
-                    msg = _('User account is disabled.')
-                    raise serializers.ValidationError(msg)
-
-                if api_settings.PASSWORDLESS_USER_MARK_EMAIL_VERIFIED \
-                        or api_settings.PASSWORDLESS_USER_MARK_MOBILE_VERIFIED:
-                    # Mark this alias as verified
-                    user = User.objects.get(pk=token.user.pk)
-                    success = verify_user_alias(user, token)
-
-                    if success is False:
-                        msg = _('Error validating user alias.')
+            if token and token_valid_for_login(token, api_settings.PASSWORDLESS_TOKEN_EXPIRE_TIME):
+                user = token.user
+                if user:
+                    if not user.is_active:
+                        msg = _('User account is disabled.')
                         raise serializers.ValidationError(msg)
 
-                attrs['user'] = user
-                return attrs
+                    if api_settings.PASSWORDLESS_USER_MARK_EMAIL_VERIFIED \
+                        or api_settings.PASSWORDLESS_USER_MARK_MOBILE_VERIFIED:
+                        # Mark this alias as verified
+                        #user = UserModel.objects.get(pk=token.user.pk)
+                        success = verify_user_alias(user, token)
 
-            else:
-                msg = _('Invalid Token')
-                raise serializers.ValidationError(msg)
-        else:
-            msg = _('Missing authentication token.')
-            raise serializers.ValidationError(msg)
+                        if success is False:
+                            msg = _('Error validating user alias.')
+                            raise serializers.ValidationError(msg)
 
+                    # Everything's good, return the validated user
+                    attrs['user'] = user
+                    return attrs
+
+        except CallbackToken.DoesNotExist:
+            logger.debug("drfpasswordless: tried to callback with non-existing callback token")
+            pass
+                
+        # In all other cases, return an invalid error
+        msg = _('Invalid Token')
+        raise serializers.ValidationError(msg)
+
+# This does the same, but looks for an active RefreshToken instead
+
+class AbstractBaseRefreshTokenSerializer(serializers.Serializer):
+    """
+    Abstract class inspired by DRF's own token serializer.
+    Returns a user if valid, None or a message if not.
+    """
+    refresh_token = TokenField(min_length=32, max_length=32)  # uuid4 is 128-bits, expressed as a hex here so 32 chars
+
+
+class RefreshTokenAuthSerializer(AbstractBaseRefreshTokenSerializer):
+
+    def validate(self, attrs):
+        if api_settings.PASSWORDLESS_USE_REFRESH_TOKENS:
+            try:
+                refresh_token = RefreshToken.objects.get(key=attrs.get('refresh_token', None), is_active=True)
+                if refresh_token and token_valid_for_login(refresh_token, api_settings.PASSWORDLESS_REFRESHTOKEN_EXPIRE_TIME):
+                    user = refresh_token.user
+                    if user:
+                        if not user.is_active:
+                            msg = _('User account is disabled.')
+                            raise serializers.ValidationError(msg)
+                        
+                        # Everything's fine, give the user and validated refresh_token back to the caller through the attrs
+                        attrs['user'] = user
+                        attrs['refresh_token'] = refresh_token
+                        return attrs
+
+            except RefreshToken.DoesNotExist:
+                logger.debug("drfpasswordless: Tried to get non-existing refresh token.")
+                pass
+                    
+        # In all other cases, return the same "invalid" error msg
+        msg = _('Invalid refreshtoken')
+        raise serializers.ValidationError(msg)
+        
 
 class CallbackTokenVerificationSerializer(AbstractBaseCallbackTokenSerializer):
     """
@@ -214,7 +254,7 @@ class CallbackTokenVerificationSerializer(AbstractBaseCallbackTokenSerializer):
             callback_token = attrs.get('token', None)
 
             token = CallbackToken.objects.get(key=callback_token, is_active=True)
-            user = User.objects.get(pk=user_id)
+            user = UserModel.objects.get(pk=user_id)
 
             if token.user == user:
                 # Check that the token.user is the request.user

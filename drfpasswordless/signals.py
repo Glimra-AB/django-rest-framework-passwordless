@@ -2,7 +2,7 @@ import logging
 from django.contrib.auth import get_user_model
 from django.dispatch import receiver
 from django.db.models import signals
-from drfpasswordless.models import CallbackToken
+from drfpasswordless.models import CallbackToken, RefreshToken
 from drfpasswordless.models import generate_numeric_token
 from drfpasswordless.settings import api_settings
 from drfpasswordless.services import TokenService
@@ -24,8 +24,7 @@ def invalidate_previous_tokens(sender, instance, **kwargs):
         for token in active_tokens:
             token.is_active = False
             token.save()
-
-
+            
 @receiver(signals.pre_save, sender=CallbackToken)
 def check_unique_tokens(sender, instance, **kwargs):
     """
@@ -36,16 +35,19 @@ def check_unique_tokens(sender, instance, **kwargs):
             instance.key = generate_numeric_token()
 
 
-User = get_user_model()
+# Note: RefreshToken doesn't have a similar check, as the uuid generation should not collide and we allow several
+# active refreshtokens for the same user (could be logged in through more than one device)
+            
+UserModel = get_user_model()
 
 
-@receiver(signals.pre_save, sender=User)
+@receiver(signals.pre_save, sender=UserModel)
 def update_alias_verification(sender, instance, **kwargs):
     """
     Flags a user's email as unverified if they change it.
     Optionally sends a verification token to the new endpoint.
     """
-    if isinstance(instance, User):
+    if isinstance(instance, UserModel):
 
         if instance.id:
 
@@ -58,7 +60,7 @@ def update_alias_verification(sender, instance, **kwargs):
 
                 # Verify that this is an existing instance and not a new one.
                 try:
-                    user_old = User.objects.get(id=instance.id)  # Pre-save object
+                    user_old = UserModel.objects.get(id=instance.id)  # Pre-save object
                     instance_email = getattr(instance, email_field)  # Incoming Email
                     old_email = getattr(user_old, email_field)  # Pre-save object email
 
@@ -81,7 +83,7 @@ def update_alias_verification(sender, instance, **kwargs):
                                 logger.info('drfpasswordless: Failed to send email to updated address: %s'
                                             % instance_email)
 
-                except User.DoesNotExist:
+                except UserModel.DoesNotExist:
                     # User probably is just initially being created
                     setattr(instance, email_verified_field, True)
 
@@ -94,7 +96,7 @@ def update_alias_verification(sender, instance, **kwargs):
 
                 # Verify that this is an existing instance and not a new one.
                 try:
-                    user_old = User.objects.get(id=instance.id)  # Pre-save object
+                    user_old = UserModel.objects.get(id=instance.id)  # Pre-save object
                     instance_mobile = getattr(instance, mobile_field)  # Incoming mobile
                     old_mobile = getattr(user_old, mobile_field)  # Pre-save object mobile
 
@@ -113,6 +115,6 @@ def update_alias_verification(sender, instance, **kwargs):
                                 logger.info('drfpasswordless: Failed to send SMS to updated mobile: %s'
                                             % instance_mobile)
 
-                except User.DoesNotExist:
+                except UserModel.DoesNotExist:
                     # User probably is just initially being created
                     setattr(instance, mobile_verified_field, True)

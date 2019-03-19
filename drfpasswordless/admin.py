@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import reverse
 from drfpasswordless.models import CallbackToken
 
+# TODO: add RefreshToken admin
 
 class UserLinkMixin(object):
     """

@@ -11,6 +11,9 @@ DEFAULTS = {
     # Amount of time that tokens last, in seconds
     'PASSWORDLESS_TOKEN_EXPIRE_TIME': 15 * 60,
 
+    # Amount of time that refreshtokens last, in seconds
+    'PASSWORDLESS_REFRESHTOKEN_EXPIRE_TIME': 86400 * 90,   # 3 months default
+
     # The user's email field name
     'PASSWORDLESS_USER_EMAIL_FIELD_NAME': 'email',
 
@@ -68,6 +71,15 @@ DEFAULTS = {
 
     # Automatically send verification email or sms when a user changes their alias.
     'PASSWORDLESS_AUTO_SEND_VERIFICATION_TOKEN': False,
+
+    # Support refresh tokens; after the callback 6-digit token is exchanged, a refresh token is generated and
+    # given to the client along with the normal access token. The refresh token can then be used to get new access tokens.
+    # Note that this only makes sense if the normal rest framework auth tokens are shortlived by some other mechanism.
+    'PASSWORDLESS_USE_REFRESH_TOKENS': False,
+
+    # Reuse existing rest framework auth tokens for a user when such a token is requested. If not using the refresh_token system,
+    # and with default non-time-limited auth tokens, it is best to reuse them, otherwise just create new tokens.
+    'PASSWORDLESS_REUSE_AUTH_TOKENS': True,
 
 }
 

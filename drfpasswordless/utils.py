@@ -13,26 +13,7 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
-def authenticate_by_token(callback_token):
-    try:
-        token = CallbackToken.objects.get(key=callback_token, is_active=True)
-
-        # Returning a user designates a successful authentication.
-        token.user = User.objects.get(pk=token.user.pk)
-        token.is_active = False  # Mark this token as used.
-        token.save()
-
-        return token.user
-
-    except CallbackToken.DoesNotExist:
-        logger.debug("drfpasswordless: Challenged with a callback token that doesn't exist.")
-    except User.DoesNotExist:
-        logger.debug("drfpasswordless: Authenticated user somehow doesn't exist.")
-    except PermissionDenied:
-        logger.debug("drfpasswordless: Permission denied while authenticating.")
-
-    return None
-
+# Helper called from the TokenService, create and return a token of the desired type
 
 def create_callback_token_for_user(user, token_type):
 
@@ -53,28 +34,6 @@ def create_callback_token_for_user(user, token_type):
         return token
 
     return None
-
-
-def validate_token_age(callback_token):
-    """
-    Returns True if a given token is within the age expiration limit.
-    """
-    try:
-        token = CallbackToken.objects.get(key=callback_token, is_active=True)
-        seconds = (timezone.now() - token.created_at).total_seconds()
-        token_expiry_time = api_settings.PASSWORDLESS_TOKEN_EXPIRE_TIME
-
-        if seconds <= token_expiry_time:
-            return True
-        else:
-            # Invalidate our token.
-            token.is_active = False
-            token.save()
-            return False
-
-    except CallbackToken.DoesNotExist:
-        # No valid token.
-        return False
 
 
 def verify_user_alias(user, token):
