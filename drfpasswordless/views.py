@@ -45,11 +45,11 @@ class AbstractBaseObtainCallbackToken(APIView):
         raise NotImplementedError
 
     def post(self, request, *args, **kwargs):
+        # Only allow auth types allowed in settings.
         if self.alias_type.upper() not in api_settings.PASSWORDLESS_AUTH_TYPES:
-            # Only allow auth types allowed in settings.
             return Response(status=status.HTTP_404_NOT_FOUND)
-
         serializer = self.serializer_class(data=request.data, context={'request': request})
+        # NOTE: this CREATES a User with the given alias (email/phone) and other user-data (depending on the settings), if it doesn't exist
         if serializer.is_valid(raise_exception=True):
             # Validate -
             user = serializer.validated_data['user']

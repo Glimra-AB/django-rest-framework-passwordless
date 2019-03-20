@@ -8,6 +8,9 @@ DEFAULTS = {
     # Allowed auth types, can be EMAIL, MOBILE, or both.
     'PASSWORDLESS_AUTH_TYPES': ['EMAIL'],
 
+    # These fields are allowed in the 6-digit user-registration API call, to setup a new user (apart from the auth alias type in use)
+    'PASSWORDLESS_USER_CREATION_FIELDS': [ ],
+
     # Amount of time that tokens last, in seconds
     'PASSWORDLESS_TOKEN_EXPIRE_TIME': 15 * 60,
 

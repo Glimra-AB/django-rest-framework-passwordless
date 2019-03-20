@@ -27,7 +27,23 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
     """
     Abstract class that returns a callback token based on the field given
     Returns a token if valid, None or a message if not.
+    As a side-effect, a User is created if not already existing with the given alias and other white-listed creation arguments
+    If the alias matches an existing user, it cannot be updated currently even if it's not verified yet. TODO figure out what is
+    best (probably allow updating the user as long as the user is not verified, after that it has to be locked obviously)
     """
+
+    phone_regex = RegexValidator(regex=r'^\+?1?\d{9,15}$',
+                                 message="Mobile number must be entered in the format:"
+                                         " '+999999999'. Up to 15 digits allowed.")
+    # We want to allow all national chars in the first/last names, but avoid HTML-style stuff etc. that could be
+    # a security concern. TODO evaluate and check what works best.
+    # \w matches alphanumerics and _, also add - to support Bengt-Ove etc.
+    name_regex = RegexValidator(regex=r'^[\w-]+$')
+
+    # These can optionally be passed when creating a new user. If passed, they have to be set to something at least.
+    first_name = serializers.CharField(validators=[name_regex], min_length=1, max_length=30, required=False)
+    last_name = serializers.CharField(validators=[name_regex], min_length=1, max_length=30, required=False)
+
     @property
     def alias_type(self):
         # The alias type, either email or mobile
@@ -39,12 +55,20 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
         if alias:
             # Create or authenticate a user and return it
 
-            if api_settings.PASSWORDLESS_REGISTER_NEW_USERS is True:
+            if api_settings.PASSWORDLESS_REGISTER_NEW_USERS:
                 # If new aliases should register new users.
-                user, created = UserModel.objects.get_or_create(**{self.alias_type: alias})
+                # We can optionally allow registration of more user model fields at the same time, these are
+                # whitelisted in the settings variable and filtered here before passed to get_or_create
+                new_user_attrs = { self.alias_type: alias }
+                for fkey in api_settings.PASSWORDLESS_USER_CREATION_FIELDS:
+                    val = attrs.get(fkey, None)
+                    if val is not None:
+                        new_user_attrs[fkey] = val
+                user, created = UserModel.objects.get_or_create(**new_user_attrs)
             else:
                 # If new aliases should not register new users.
                 try:
+                    # TODO: allow updating the user with the new attrs at this point, if the user is not validated on either of the email or phone yet
                     user = UserModel.objects.get(**{self.alias_type: alias})
                 except UserModel.DoesNotExist:
                     user = None
@@ -70,7 +94,9 @@ class EmailAuthSerializer(AbstractBaseAliasAuthenticationSerializer):
     def alias_type(self):
         return 'email'
 
-    email = serializers.EmailField()
+    # The email field is obviously required, but the mobile can be optional (and viceversa in the MobileAuthSerializer)
+    email = serializers.EmailField(required=True)
+    mobile = serializers.CharField(validators=[AbstractBaseAliasAuthenticationSerializer.phone_regex], max_length=15, required=False)
 
 
 class MobileAuthSerializer(AbstractBaseAliasAuthenticationSerializer):
@@ -78,10 +104,8 @@ class MobileAuthSerializer(AbstractBaseAliasAuthenticationSerializer):
     def alias_type(self):
         return 'mobile'
 
-    phone_regex = RegexValidator(regex=r'^\+?1?\d{9,15}$',
-                                 message="Mobile number must be entered in the format:"
-                                         " '+999999999'. Up to 15 digits allowed.")
-    mobile = serializers.CharField(validators=[phone_regex], max_length=15)
+    email = serializers.EmailField(required=False)
+    mobile = serializers.CharField(validators=[AbstractBaseAliasAuthenticationSerializer.phone_regex], max_length=15, required=True)
 
 
 """
