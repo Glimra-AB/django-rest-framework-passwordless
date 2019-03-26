@@ -1,5 +1,6 @@
 import logging
 
+from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth import user_logged_in
 
@@ -21,6 +22,7 @@ from drfpasswordless.serializers import (
     MobileVerificationSerializer,
 )
 from drfpasswordless.services import TokenService
+from drfpasswordless.authentication import is_token_expired
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +53,6 @@ class AbstractBaseObtainCallbackToken(APIView):
         serializer = self.serializer_class(data=request.data, context={'request': request})
         # NOTE: this CREATES a User with the given alias (email/phone) and other user-data (depending on the settings), if it doesn't exist
         if serializer.is_valid(raise_exception=True):
-            # Validate -
             user = serializer.validated_data['user']
             # Create and send callback token
             success = TokenService.send_token(user, self.alias_type, **self.message_payload)
@@ -145,6 +146,10 @@ class AbstractBaseObtainAuthToken(APIView):
 
             if api_settings.PASSWORDLESS_REUSE_AUTH_TOKENS:
                 access_token, created = Token.objects.get_or_create(user=user)
+                # Make sure we don't dole out an expired token
+                if is_token_expired(access_token):
+                    access_token.delete()
+                    access_token = Token.objects.create(user=user)
             else:
                 # BROKEN for now, as the standard rest_framework.authtoken model has a onetoone correspondance with the user, so it can
                 # only keep a single auth token per user.
@@ -156,6 +161,7 @@ class AbstractBaseObtainAuthToken(APIView):
             if api_settings.PASSWORDLESS_USE_REFRESH_TOKENS:
                 if by_refresh_token:
                     # Send out the same refresh token back to the client which it used to refresh.
+                    # The serializer validation above will have checked that it still is valid at this point.
                     refresh_token = serializer.validated_data['refresh_token']
                 else:
                     # Incoming callback token, we should also return a fresh refresh token in this case if enabled

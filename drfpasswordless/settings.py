@@ -11,11 +11,14 @@ DEFAULTS = {
     # These fields are allowed in the 6-digit user-registration API call, to setup a new user (apart from the auth alias type in use)
     'PASSWORDLESS_USER_CREATION_FIELDS': [ ],
 
-    # Amount of time that tokens last, in seconds
+    # Amount of time that the callback tokens last, in seconds
     'PASSWORDLESS_TOKEN_EXPIRE_TIME': 15 * 60,
 
     # Amount of time that refreshtokens last, in seconds
     'PASSWORDLESS_REFRESHTOKEN_EXPIRE_TIME': 86400 * 90,   # 3 months default
+
+    # Amount of time that rest framework authtokens last, in seconds
+    'PASSWORDLESS_AUTHTOKEN_EXPIRE_TIME': 86400,   # 24 hours default
 
     # The user's email field name
     'PASSWORDLESS_USER_EMAIL_FIELD_NAME': 'email',
@@ -82,8 +85,8 @@ DEFAULTS = {
 
     # Reuse existing rest framework auth tokens for a user when such a token is requested. If not using the refresh_token system,
     # and with default non-time-limited auth tokens, it is best to reuse them, otherwise just create new tokens.
+    # Note: with the normal rest framework, this can only be set to True (a User can't have multiple Tokens)
     'PASSWORDLESS_REUSE_AUTH_TOKENS': True,
-
 }
 
 # List of settings that may be in string import notation.
