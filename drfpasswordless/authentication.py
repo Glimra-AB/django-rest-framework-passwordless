@@ -12,6 +12,17 @@ from drfpasswordless.settings import api_settings
 def is_token_expired(token):
     return (token.created < (timezone.now() - timedelta(seconds=api_settings.PASSWORDLESS_AUTHTOKEN_EXPIRE_TIME)))
 
+# Used by django-rest-auth during /login, we need to hook it to check if the token it tries to give the user has in fact expired
+# Set it up by pointing REST_AUTH_TOKEN_CREATOR to this function in settings.py
+
+def expiring_create_token(token_model, user, serializer):
+    token, _ = token_model.objects.get_or_create(user=user)
+    # Make sure we don't dole out an expired token
+    if is_token_expired(token):
+        token.delete()
+        token = token_model.objects.create(user=user)
+    return token
+
 class ExpiringTokenAuthentication(TokenAuthentication):
     def authenticate_credentials(self, key):
         model = self.get_model()
