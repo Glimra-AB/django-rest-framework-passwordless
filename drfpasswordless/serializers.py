@@ -248,6 +248,7 @@ class RefreshTokenAuthSerializer(AbstractBaseRefreshTokenSerializer):
                 if refresh_token and token_valid_for_login(refresh_token, api_settings.PASSWORDLESS_REFRESHTOKEN_EXPIRE_TIME):
                     user = refresh_token.user
                     if user:
+                        # TODO: should we require a secondary piece of information in addition to the refresh_token? The correct email or phone?
                         if not user.is_active:
                             msg = _('User account is disabled.')
                             raise serializers.ValidationError(msg)

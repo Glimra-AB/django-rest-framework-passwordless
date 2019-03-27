@@ -24,8 +24,12 @@ class ExpiringTokenAuthentication(TokenAuthentication):
             raise exceptions.AuthenticationFailed('User inactive or deleted')
                                                     
         if is_token_expired(token):
-            # TODO: possibly reinstate when this works fine. This is not strictly necessary though, only one Token per User and it is inactive now anyway
-            #token.delete()
+            # The Token should not really need to be deleted here, but we are missing an override for django-rest-auth's LoginView
+            # handling, where it performs get_or_create per default and that will deal out the expired token giving the user no
+            # possibility to flush the expired token in that case.
+            # TODO: should fix LoginView in addition, at least that saves the user from actually having to try the API key to flush the
+            # token which shouldn't be necessary.
+            token.delete()
             raise exceptions.AuthenticationFailed('Token has expired')
 
         return token.user, token
