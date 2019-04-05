@@ -2,7 +2,8 @@ from datetime import timedelta
 from django.utils import timezone
 
 from rest_framework.authentication import TokenAuthentication
-from rest_framework import exceptions
+from rest_framework import serializers,exceptions
+from rest_auth.models import TokenModel
 
 from drfpasswordless.settings import api_settings
 
@@ -11,6 +12,9 @@ from drfpasswordless.settings import api_settings
 
 def is_token_expired(token):
     return (token.created < (timezone.now() - timedelta(seconds=api_settings.PASSWORDLESS_AUTHTOKEN_EXPIRE_TIME)))
+
+def token_expiration_time(token):
+    return (token.created + timedelta(seconds=api_settings.PASSWORDLESS_AUTHTOKEN_EXPIRE_TIME))
 
 # Used by django-rest-auth during /login, we need to hook it to check if the token it tries to give the user has in fact expired
 # Set it up by pointing REST_AUTH_TOKEN_CREATOR to this function in settings.py
@@ -45,3 +49,18 @@ class ExpiringTokenAuthentication(TokenAuthentication):
 
         return token.user, token
 
+class ExpiringTokenSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Token model. Adds the expiration time compared to the default rest-auth serializer.
+    """
+
+    expiration = serializers.SerializerMethodField()  
+    
+    class Meta:
+        model = TokenModel
+        fields = ('key','expiration',)
+
+    def get_expiration(self, obj):
+        return token_expiration_time(obj)
+
+    

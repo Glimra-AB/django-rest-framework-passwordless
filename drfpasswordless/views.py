@@ -22,7 +22,7 @@ from drfpasswordless.serializers import (
     MobileVerificationSerializer,
 )
 from drfpasswordless.services import TokenService
-from drfpasswordless.authentication import is_token_expired
+from drfpasswordless.authentication import is_token_expired,token_expiration_time
 
 logger = logging.getLogger(__name__)
 
@@ -186,9 +186,12 @@ class AbstractBaseObtainAuthToken(APIView):
             if access_token:
                 # Return the access token to the client, optionally with a refresh token
                 if refresh_token is None:
-                    return Response({ 'token': access_token.key }, status=status.HTTP_200_OK)
+                    return Response({ 'token': access_token.key, 'expiration': token_expiration_time(access_token) },
+                                    status=status.HTTP_200_OK)
                 else:
-                    return Response({ 'token': access_token.key, 'refresh_token': refresh_token.key.hex }, status=status.HTTP_200_OK)
+                    return Response({ 'token': access_token.key, 'expiration': token_expiration_time(access_token),
+                                      'refresh_token': refresh_token.key.hex },
+                                    status=status.HTTP_200_OK)
         else:
             logger.error("Couldn't log in unknown user. Errors on serializer: {}".format(serializer.error_messages))
             
