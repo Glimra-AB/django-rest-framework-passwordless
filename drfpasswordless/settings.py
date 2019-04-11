@@ -48,6 +48,10 @@ DEFAULTS = {
     # The email template name.
     'PASSWORDLESS_EMAIL_TOKEN_HTML_TEMPLATE_NAME': "passwordless_default_token_email.html",
 
+    # Twilio account credentials
+    'PASSWORDLESS_TWILIO_ACCOUNT_SID': None,
+    'PASSWORDLESS_TWILIO_AUTH_TOKEN': None,
+
     # Your twilio number that sends the callback tokens.
     'PASSWORDLESS_MOBILE_NOREPLY_NUMBER': None,
 
