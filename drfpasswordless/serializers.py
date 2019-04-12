@@ -104,7 +104,7 @@ class MobileAuthSerializer(AbstractBaseAliasAuthenticationSerializer):
     def alias_type(self):
         return 'mobile'
 
-    email = serializers.EmailField(required=False)
+    email = serializers.EmailField(required=True)
     mobile = serializers.CharField(validators=[AbstractBaseAliasAuthenticationSerializer.phone_regex], max_length=15, required=True)
 
 
