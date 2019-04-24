@@ -8,6 +8,7 @@ from rest_framework import serializers
 from drfpasswordless.models import CallbackToken, RefreshToken
 from drfpasswordless.settings import api_settings
 from drfpasswordless.utils import verify_user_alias
+from django.db.utils import IntegrityError
 
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
@@ -43,19 +44,23 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
     # These can optionally be passed when creating a new user. If passed, they have to be set to something at least.
     first_name = serializers.CharField(validators=[name_regex], min_length=1, max_length=30, required=False)
     last_name = serializers.CharField(validators=[name_regex], min_length=1, max_length=30, required=False)
-
+    tos_version_accepted = serializers.IntegerField(min_value=1, required=False)
+    
+    create = serializers.BooleanField(required=False)
+    
     @property
     def alias_type(self):
         # The alias type, either email or mobile
         raise NotImplementedError
 
     def validate(self, attrs):
+        # We know this is there as it's marked required in the serializer field (email or mobile) below
         alias = attrs.get(self.alias_type)
 
         if alias:
-            # Create or authenticate a user and return it
-
-            if api_settings.PASSWORDLESS_REGISTER_NEW_USERS:
+            # Create or authenticate a user and return it. The client has to explicitly request creation by 'create',
+            # and if so, we require a specific set of fields. Otherwise, it's enough to just supply the alias field.
+            if api_settings.PASSWORDLESS_REGISTER_NEW_USERS and attrs.get('create', False):
                 # If new aliases should register new users.
                 # We can optionally allow registration of more user model fields at the same time, these are
                 # whitelisted in the settings variable and filtered here before passed to get_or_create
@@ -64,11 +69,21 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                     val = attrs.get(fkey, None)
                     if val is not None:
                         new_user_attrs[fkey] = val
-                user, created = UserModel.objects.get_or_create(**new_user_attrs)
-            else:
-                # If new aliases should not register new users.
+                for reqkey in api_settings.PASSWORDLESS_USER_CREATION_FIELDS_REQ:
+                    if not reqkey in new_user_attrs:
+                        raise serializers.ValidationError('Field %s missing while creating new user' % reqkey)
+                # I'm not sure we need the get_or_create (create should be enough). See below in either case.
+                # We get db integrity exceptions if we try to create a new user with the same email and/or mobile, even if
+                # the other fields are different, which is good.
                 try:
-                    # TODO: allow updating the user with the new attrs at this point, if the user is not validated on either of the email or phone yet
+                    user, created = UserModel.objects.get_or_create(**new_user_attrs)
+                except IntegrityError:
+                    raise serializers.ValidationError('User email or mobile already taken')
+            else:
+                # If new aliases should not register new users but just "login" (send a new callback token)
+                try:
+                    # TODO: allow updating the user with the new attrs at this point, if the user is not validated on either of the
+                    # email or phone yet but is still existing in the database.
                     user = UserModel.objects.get(**{self.alias_type: alias})
                 except UserModel.DoesNotExist:
                     user = None
@@ -95,6 +110,7 @@ class EmailAuthSerializer(AbstractBaseAliasAuthenticationSerializer):
         return 'email'
 
     # The email field is obviously required, but the mobile can be optional (and viceversa in the MobileAuthSerializer)
+    # Note that if create=true is set (requesting user creation) then we do require all fields.
     email = serializers.EmailField(required=True)
     mobile = serializers.CharField(validators=[AbstractBaseAliasAuthenticationSerializer.phone_regex], max_length=15, required=False)
 
@@ -104,7 +120,8 @@ class MobileAuthSerializer(AbstractBaseAliasAuthenticationSerializer):
     def alias_type(self):
         return 'mobile'
 
-    email = serializers.EmailField(required=True)
+    # See above
+    email = serializers.EmailField(required=False)
     mobile = serializers.CharField(validators=[AbstractBaseAliasAuthenticationSerializer.phone_regex], max_length=15, required=True)
 
 

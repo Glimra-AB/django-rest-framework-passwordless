@@ -11,6 +11,9 @@ DEFAULTS = {
     # These fields are allowed in the 6-digit user-registration API call, to setup a new user (apart from the auth alias type in use)
     'PASSWORDLESS_USER_CREATION_FIELDS': [ ],
 
+    # Which of the creation fields are required when creating a user
+    'PASSWORDLESS_USER_CREATION_FIELDS_REQ': [ ],
+    
     # Amount of time that the callback tokens last, in seconds
     'PASSWORDLESS_TOKEN_EXPIRE_TIME': 15 * 60,
 
