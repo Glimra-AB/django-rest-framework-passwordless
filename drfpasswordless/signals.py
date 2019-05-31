@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 @receiver(signals.pre_save, sender=CallbackToken)
 def invalidate_previous_tokens(sender, instance, **kwargs):
     """
-    Invalidates all previously issued tokens as a post_save signal.
+    Invalidates all previously issued tokens as a pre_save signal.
     """
     active_tokens = None
     if isinstance(instance, CallbackToken):
