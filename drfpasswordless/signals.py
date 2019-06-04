@@ -24,6 +24,8 @@ def check_unique_tokens(sender, instance, **kwargs):
             
 UserModel = get_user_model()
 
+# Note: these verification sends use the production linkbase and since we don't store the dev/prod app status, we don't know
+# what linkbase to use here. TODO
 
 @receiver(signals.pre_save, sender=UserModel)
 def update_alias_verification(sender, instance, **kwargs):
@@ -58,7 +60,7 @@ def update_alias_verification(sender, instance, **kwargs):
                             message_payload = {'email_subject': email_subject,
                                                'email_plaintext': email_plaintext,
                                                'email_html': email_html}
-                            success = TokenService.send_token(instance, 'email', **message_payload)
+                            success = TokenService.send_token(instance, 'email', api_settings.PASSWORDLESS_PROD_LINK_BASE, **message_payload)
 
                             if success:
                                 logger.info('drfpasswordless: Successfully sent email on updated address: %s'
@@ -90,7 +92,7 @@ def update_alias_verification(sender, instance, **kwargs):
                         if api_settings.PASSWORDLESS_AUTO_SEND_VERIFICATION_TOKEN is True:
                             mobile_message = api_settings.PASSWORDLESS_MOBILE_MESSAGE
                             message_payload = {'mobile_message': mobile_message}
-                            success = TokenService.send_token(instance, 'mobile', **message_payload)
+                            success = TokenService.send_token(instance, 'mobile', api_settings.PASSWORDLESS_PROD_LINK_BASE, **message_payload)
 
                             if success:
                                 logger.info('drfpasswordless: Successfully sent SMS on updated mobile: %s'

@@ -66,7 +66,7 @@ def inject_template_context(context):
     return context
 
 
-def send_email_with_callback_token(user, email_token, **kwargs):
+def send_email_with_callback_token(user, email_token, linkbase, **kwargs):
     """
     Sends a Email to user.email.
 
@@ -86,11 +86,12 @@ def send_email_with_callback_token(user, email_token, **kwargs):
                                     api_settings.PASSWORDLESS_EMAIL_TOKEN_HTML_TEMPLATE_NAME)
 
             # Inject context if user specifies.
-            context = inject_template_context({'callback_token': email_token.key, })
+            context = inject_template_context({'callback_token': email_token.key,
+                                               'callback_linkbase': linkbase, })
             html_message = loader.render_to_string(email_html, context,)
             send_mail(
                 email_subject,
-                email_plaintext % email_token.key,
+                email_plaintext % (linkbase, email_token.key),
                 api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS,
                 [getattr(user, api_settings.PASSWORDLESS_USER_EMAIL_FIELD_NAME)],
                 fail_silently=False,
@@ -109,7 +110,7 @@ def send_email_with_callback_token(user, email_token, **kwargs):
         return False
 
 
-def send_sms_with_callback_token(user, mobile_token, **kwargs):
+def send_sms_with_callback_token(user, mobile_token, linkbase, **kwargs):
     """
     Sends a SMS to user.mobile via Twilio.
 
@@ -130,7 +131,7 @@ def send_sms_with_callback_token(user, mobile_token, **kwargs):
             twilio_client = Client(api_settings.PASSWORDLESS_TWILIO_ACCOUNT_SID, api_settings.PASSWORDLESS_TWILIO_AUTH_TOKEN)
             #print('Trying to send SMS to {}'.format(getattr(user, api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME)))
             twilio_client.messages.create(
-                body=base_string % mobile_token.key,
+                body=base_string % (linkbase, mobile_token.key),
                 to=getattr(user, api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME),
                 from_=api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER
             )

@@ -45,8 +45,12 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
     first_name = serializers.CharField(validators=[name_regex], min_length=1, max_length=30, required=False)
     last_name = serializers.CharField(validators=[name_regex], min_length=1, max_length=30, required=False)
     tos_version_accepted = serializers.IntegerField(min_value=1, required=False)
-    
+
+    # True if we request user creation (enforces require on some other fields than if we just request a callback link)
     create = serializers.BooleanField(required=False)
+
+    # True if we request the callback link using the dev link format (sent by dev apps)
+    devlink = serializers.BooleanField(required=False)
     
     @property
     def alias_type(self):

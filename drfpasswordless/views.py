@@ -51,11 +51,18 @@ class AbstractBaseObtainCallbackToken(APIView):
         if self.alias_type.upper() not in api_settings.PASSWORDLESS_AUTH_TYPES:
             return Response(status=status.HTTP_404_NOT_FOUND)
         serializer = self.serializer_class(data=request.data, context={'request': request})
-        # NOTE: this CREATES a User with the given alias (email/phone) and other user-data (depending on the settings), if it doesn't exist
+        # NOTE: this potentially CREATES a User with the given alias (email/phone) and other user-data (depending on the settings),
+        # if create=true was given and the User doesn't exist already
         if serializer.is_valid(raise_exception=True):
             user = serializer.validated_data['user']
             # Create and send callback token
-            success = TokenService.send_token(user, self.alias_type, **self.message_payload)
+            # If devlink=true is provided during the request, we use a different link base for the callback link, to support dev-apps
+            if 'devlink' in serializer.validated_data and serializer.validated_data['devlink']:
+                linkbase = api_settings.PASSWORDLESS_DEV_LINK_BASE
+            else:
+                linkbase = api_settings.PASSWORDLESS_PROD_LINK_BASE
+                
+            success = TokenService.send_token(user, self.alias_type, linkbase, **self.message_payload)
 
             # Respond With Success Or Failure of Sent
             if success:

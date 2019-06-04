@@ -45,8 +45,11 @@ DEFAULTS = {
     # The email subject
     'PASSWORDLESS_EMAIL_SUBJECT': "Your Login Token",
 
+    'PASSWORDLESS_PROD_LINK_BASE': '',
+    'PASSWORDLESS_DEV_LINK_BASE': '',
+
     # A plaintext email message overridden by the html message. Takes one string.
-    'PASSWORDLESS_EMAIL_PLAINTEXT_MESSAGE': "Enter this token to sign in: %s",
+    'PASSWORDLESS_EMAIL_PLAINTEXT_MESSAGE': "Enter this token to sign in: %s%s",
 
     # The email template name.
     'PASSWORDLESS_EMAIL_TOKEN_HTML_TEMPLATE_NAME': "passwordless_default_token_email.html",
@@ -59,7 +62,7 @@ DEFAULTS = {
     'PASSWORDLESS_MOBILE_NOREPLY_NUMBER': None,
 
     # The message sent to mobile users logging in. Takes one string.
-    'PASSWORDLESS_MOBILE_MESSAGE': "Use this code to log in: %s",
+    'PASSWORDLESS_MOBILE_MESSAGE': "Use this code to log in: %s%s",
 
     # Registers previously unseen aliases as new users.
     'PASSWORDLESS_REGISTER_NEW_USERS': True,
