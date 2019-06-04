@@ -8,30 +8,14 @@ from drfpasswordless.settings import api_settings
 from drfpasswordless.services import TokenService
 
 logger = logging.getLogger(__name__)
-
-
-@receiver(signals.pre_save, sender=CallbackToken)
-def invalidate_previous_tokens(sender, instance, **kwargs):
-    """
-    Invalidates all previously issued tokens as a pre_save signal.
-    """
-    active_tokens = None
-    if isinstance(instance, CallbackToken):
-        active_tokens = CallbackToken.objects.active().filter(user=instance.user).exclude(id=instance.id)
-
-    # Invalidate tokens
-    if active_tokens:
-        for token in active_tokens:
-            token.is_active = False
-            token.save()
             
 @receiver(signals.pre_save, sender=CallbackToken)
 def check_unique_tokens(sender, instance, **kwargs):
     """
-    Ensures that mobile and email tokens are unique or tries once more to generate.
+    Ensures that mobile and email tokens are unique by redoing the key generation
     """
     if isinstance(instance, CallbackToken):
-        if CallbackToken.objects.filter(key=instance.key, is_active=True).exists():
+        while CallbackToken.objects.filter(key=instance.key, is_active=True).exists():
             instance.key = generate_numeric_token()
 
 

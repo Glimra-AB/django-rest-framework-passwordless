@@ -3,6 +3,7 @@ import os
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.core.mail import send_mail
+from django.db import transaction
 from django.template import loader
 from django.utils import timezone
 from drfpasswordless.models import CallbackToken
@@ -13,18 +14,22 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
-# Helper called from the TokenService, create and return a token of the desired type
+# Helper called from the TokenService, create and return a token of the desired type while invalidating any previous tokens
 
 def create_callback_token_for_user(user, token_type):
 
     token = None
     token_type = token_type.upper()
 
+    # First deactivate all existing tokens for the User
+    active_tokens = CallbackToken.objects.select_for_update().filter(user=user, is_active=True)
+    with transaction.atomic():
+        active_tokens.update(is_active=False)
+    
     if token_type == 'EMAIL':
         token = CallbackToken.objects.create(user=user,
                                              to_alias_type=token_type,
                                              to_alias=getattr(user, api_settings.PASSWORDLESS_USER_EMAIL_FIELD_NAME))
-
     elif token_type == 'MOBILE':
         token = CallbackToken.objects.create(user=user,
                                              to_alias_type=token_type,
