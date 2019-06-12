@@ -20,6 +20,10 @@ DEFAULTS = {
     # Amount of time that refreshtokens last, in seconds
     'PASSWORDLESS_REFRESHTOKEN_EXPIRE_TIME': 86400 * 90,   # 3 months default
 
+    # If True, give out new refresh tokens every time one is used to get an authtoken, preventing them from expiring as
+    # long as they are used regularly
+    'PASSWORDLESS_ROTATE_REFRESH_TOKENS': True,
+    
     # Amount of time that rest framework authtokens last, in seconds
     'PASSWORDLESS_AUTHTOKEN_EXPIRE_TIME': 86400,   # 24 hours default
 

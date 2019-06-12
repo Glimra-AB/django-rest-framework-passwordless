@@ -167,15 +167,19 @@ class AbstractBaseObtainAuthToken(APIView):
                 
             if api_settings.PASSWORDLESS_USE_REFRESH_TOKENS:
                 if by_refresh_token:
-                    # Send out the same refresh token back to the client which it used to refresh.
-                    # The serializer validation above will have checked that it still is valid at this point.
+                    # Default is to send out the same refresh token back to the client which it used to refresh.
+                    # The serializer validation above will have checked that the refresh_token is still valid
                     refresh_token = serializer.validated_data['refresh_token']
+                    if api_settings.PASSWORDLESS_ROTATE_REFRESH_TOKENS:
+                        # Every time a refresh token is used, we create a new one and send back, keeping the expiration relative the last use
+                        refresh_token.delete()
+                        refresh_token = RefreshToken.objects.create(user=user)
                 else:
                     # Incoming callback token, we should also return a fresh refresh token in this case if enabled
                     #
                     # Always create a new, so the user can login and logout on multiple devices independently
                     #
-                    # (TODO: should be an endpoint to invalidate all refresh tokens for a user, hook into the logout path or something)
+                    # (TODO: should add an endpoint to invalidate all refresh tokens for a user, hook into the logout path or something)
                     refresh_token = RefreshToken.objects.create(user=user)
             else:
                 refresh_token = None

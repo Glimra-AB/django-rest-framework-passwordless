@@ -280,7 +280,7 @@ class RefreshTokenAuthSerializer(AbstractBaseRefreshTokenSerializer):
                             msg = _('User account is disabled.')
                             raise serializers.ValidationError(msg)
                         
-                        # Everything's fine, give the user and validated refresh_token back to the caller through the attrs
+                        # Everything's fine, give the user a validated refresh_token back to the caller through the attrs
                         attrs['user'] = user
                         attrs['refresh_token'] = refresh_token
                         return attrs

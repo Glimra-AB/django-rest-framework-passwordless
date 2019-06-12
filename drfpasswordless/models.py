@@ -12,7 +12,7 @@ def generate_numeric_token():
     Generate a random 6 digit string of numbers.
     We use this formatting to allow leading 0s.
     """
-    return str("%06d" % randint(0, 999998))   # 999999 is currently reserved for the demo user special case, TODO should refactor
+    return str("%06d" % randint(0, 999998))   # 999999 is reserved and can be used for the demo user special case
 
 
 class CallbackTokenManger(models.Manager):
@@ -50,10 +50,9 @@ class CallbackToken(AbstractBaseCallbackToken):
     """
     Generates a random six digit number to be returned.
 
-    When a new CalbackToken is created, older ones of the same type are invalidated
-    via the pre_save signal in signals.py.
+    The caller has to assure that older tokens for the same user are invalidated previous to calling this.
 
-    There is also a pre_save signal that checks that key and active are unique and runs generate_numeric_token again if not
+    There is a pre_save signal that checks that key and active are unique and runs generate_numeric_token again if not
     """
     key = models.CharField(default=generate_numeric_token, max_length=6, unique=True)
     to_alias = models.CharField(blank=True, max_length=40)       # email or phone number this token was sent to
