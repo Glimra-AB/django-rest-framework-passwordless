@@ -22,8 +22,9 @@ def create_callback_token_for_user(user, token_type):
     token_type = token_type.upper()
 
     # First deactivate all existing tokens for the User
-    active_tokens = CallbackToken.objects.select_for_update().filter(user=user, is_active=True)
+    # TODO: option to delete them directly instead?
     with transaction.atomic():
+        active_tokens = CallbackToken.objects.select_for_update().filter(user=user, is_active=True)
         active_tokens.update(is_active=False)
     
     if token_type == 'EMAIL':
