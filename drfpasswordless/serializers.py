@@ -76,7 +76,9 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                 for reqkey in api_settings.PASSWORDLESS_USER_CREATION_FIELDS_REQ:
                     if not reqkey in new_user_attrs:
                         raise serializers.ValidationError('Field %s missing while creating new user' % reqkey)
-                # I'm not sure we need the get_or_create (create should be enough). See below in either case.
+                # The get_or_create is to make the register API call idempotent, so if it's repeated, you get the same result.
+                # If we use only create here, the first call would create the user and the second call would return the validationerror.
+                #
                 # We get db integrity exceptions if we try to create a new user with the same email and/or mobile, even if
                 # the other fields are different, which is good.
                 try:
