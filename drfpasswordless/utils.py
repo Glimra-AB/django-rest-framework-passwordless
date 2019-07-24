@@ -3,6 +3,7 @@ import os
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.core.mail import send_mail
+from django.core.cache import cache
 from django.db import transaction
 from django.template import loader
 from django.utils import timezone
@@ -47,15 +48,23 @@ def verify_user_alias(user, token):
     Marks a user's contact point as verified depending on accepted token type.
     """
     if token.to_alias_type == 'EMAIL':
-        if token.to_alias == getattr(user, api_settings.PASSWORDLESS_USER_EMAIL_FIELD_NAME):
+        if token.to_alias == getattr(user, api_settings.PASSWORDLESS_USER_EMAIL_FIELD_NAME) and \
+           not getattr(user, api_settings.PASSWORDLESS_USER_EMAIL_VERIFIED_FIELD_NAME):
             setattr(user, api_settings.PASSWORDLESS_USER_EMAIL_VERIFIED_FIELD_NAME, True)
+            user.save(update_fields=[ api_settings.PASSWORDLESS_USER_EMAIL_VERIFIED_FIELD_NAME ])
+            # Give a way to let onboarding tasks do their thing with a newly verified user
+            cache.set('newuser_{}'.format(user.id), user.email, timeout=None)
+        return True
     elif token.to_alias_type == 'MOBILE':
-        if token.to_alias == getattr(user, api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME):
+        if token.to_alias == getattr(user, api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME) and \
+           not getattr(user, api_settings.PASSWORDLESS_USER_MOBILE_VERIFIED_FIELD_NAME):
             setattr(user, api_settings.PASSWORDLESS_USER_MOBILE_VERIFIED_FIELD_NAME, True)
-    else:
-        return False
-    user.save()
-    return True
+            user.save(update_fields=[ api_settings.PASSWORDLESS_USER_MOBILE_VERIFIED_FIELD_NAME ])
+            # Give a way to let onboarding tasks do their thing with a newly verified user
+            cache.set('newuser_{}'.format(user.id), user.email, timeout=None)
+        return True
+
+    return False
 
 
 def inject_template_context(context):
