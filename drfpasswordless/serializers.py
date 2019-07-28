@@ -38,8 +38,8 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                                          " '+999999999'. Up to 15 digits allowed.")
     # We want to allow all national chars in the first/last names, but avoid HTML-style stuff etc. that could be
     # a security concern. TODO evaluate and check what works best.
-    # \w matches alphanumerics and _, also add - to support Bengt-Ove etc.
-    name_regex = RegexValidator(regex=r'^[\w-]+$')
+    # \w matches alphanumerics and _, also add - and space to support Bengt-Ove etc. 
+    name_regex = RegexValidator(regex=r'^[ \w-]+$')
 
     # These can optionally be passed when creating a new user. If passed, they have to be set to something at least.
     first_name = serializers.CharField(validators=[name_regex], min_length=1, max_length=30, required=False)
