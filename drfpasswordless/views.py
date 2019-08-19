@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated 
 from rest_framework.views import APIView
 
-from drfpasswordless.models import RefreshToken
+from drfpasswordless.models import RefreshToken, CallbackToken
 from drfpasswordless.settings import api_settings
 from drfpasswordless.serializers import (
     EmailAuthSerializer,
@@ -61,8 +61,11 @@ class AbstractBaseObtainCallbackToken(APIView):
                 linkbase = api_settings.PASSWORDLESS_DEV_LINK_BASE
             else:
                 linkbase = api_settings.PASSWORDLESS_PROD_LINK_BASE
-                
-            success = TokenService.send_token(user, self.alias_type, linkbase, **self.message_payload)
+
+            if not user.is_demo:
+                success = TokenService.send_token(user, self.alias_type, linkbase, **self.message_payload)
+            else:
+                success = False # demo-users can't request new CallbackTokens
 
             # Respond With Success Or Failure of Sent
             if success:
@@ -184,25 +187,23 @@ class AbstractBaseObtainAuthToken(APIView):
             else:
                 refresh_token = None
                 
-            # I'm not sure what this was supposed to achieve, disabled. But verify that new users can't login by an empty pw or so..
-        
-            #if created:
-            #    # Initially set an unusable password if a user is created through this.
-            #    user.set_unusable_password()
-            #    user.save()
-
             # Consider this a login action for the user and update the user's last_login by sending a signal to django.contrib.auth
             user_logged_in.send(sender=type(user), request=request, user=user)
+
+            # At this point we expire the CallbackToken(s) since the user is logged in, to reduce the chance of a spam robot finding the
+            # combination during the 15 minutes the token is potentially valid after this. If something breaks here, the client will have
+            # to re-request a token. Never remove the demo-user's special login token.
+            if not user.is_demo:
+                CallbackToken.objects.filter(user=user).delete()
             
-            if access_token:
-                # Return the access token to the client, optionally with a refresh token
-                if refresh_token is None:
-                    return Response({ 'token': access_token.key, 'expiration': token_expiration_time(access_token) },
-                                    status=status.HTTP_200_OK)
-                else:
-                    return Response({ 'token': access_token.key, 'expiration': token_expiration_time(access_token),
-                                      'refresh_token': refresh_token.key.hex },
-                                    status=status.HTTP_200_OK)
+            # Return the access token to the client, optionally with a refresh token
+            if refresh_token is None:
+                return Response({ 'token': access_token.key, 'expiration': token_expiration_time(access_token) },
+                                status=status.HTTP_200_OK)
+            else:
+                return Response({ 'token': access_token.key, 'expiration': token_expiration_time(access_token),
+                                  'refresh_token': refresh_token.key.hex },
+                                status=status.HTTP_200_OK)
         else:
             logger.error("Couldn't log in unknown user. Errors on serializer: {}".format(serializer.error_messages))
             
