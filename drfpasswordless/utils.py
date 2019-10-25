@@ -10,6 +10,7 @@ from django.utils import timezone
 from drfpasswordless.models import CallbackToken
 from drfpasswordless.settings import api_settings
 
+from sentry_sdk import add_breadcrumb
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -113,7 +114,7 @@ def send_email_with_callback_token(user, email_token, linkbase, **kwargs):
         return True
 
     except Exception as e:
-        logger.debug("Failed to send token email to user: %d."
+        logger.error("Failed to send token email to user: %d."
                   "Possibly no email on user object. Email entered was %s" %
                   (user.id, getattr(user, api_settings.PASSWORDLESS_USER_EMAIL_FIELD_NAME)))
         logger.debug(e)
@@ -147,17 +148,24 @@ def send_sms_with_callback_token(user, mobile_token, linkbase, **kwargs):
             )
             return True
         else:
-            logger.debug("Failed to send token sms. Missing PASSWORDLESS_MOBILE_NOREPLY_NUMBER.")
+            logger.error("Failed to send token sms. Missing PASSWORDLESS_MOBILE_NOREPLY_NUMBER.")
             return False
     except ImportError:
-        logger.debug("Couldn't import Twilio client. Is twilio installed?")
+        logger.error("Couldn't import Twilio client. Is twilio installed?")
         return False
     except KeyError:
-        logger.debug("Couldn't send SMS."
+        logger.error("Couldn't send SMS."
                      "Did you set your Twilio account tokens and specify a PASSWORDLESS_MOBILE_NOREPLY_NUMBER?")
+        return False
     except Exception as e:
-        logger.debug("Failed to send token SMS to user: {}. "
-                     "Possibly no mobile number on user object or the twilio package isn't set up yet. "
-                     "Number entered was {}".format(user.id, getattr(user, api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME)))
-        logger.debug(e)
+        add_breadcrumb(message='Failed to send Twilio SMS',
+                       category='login',
+                       data={
+                           'error': str(e)
+                       })
+        # This will also send to Sentry
+        logger.error("Failed to send token SMS to user {} and mobile {}".format(user.id,
+                                                                                getattr(user,
+                                                                                        api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME)))
+        logger.info(e)
         return False

@@ -23,6 +23,7 @@ def expiring_create_token(token_model, user, serializer):
     token, _ = token_model.objects.get_or_create(user=user)
     # Make sure we don't dole out an expired token
     if is_token_expired(token):
+        # TODO: this can race it seems, the delete not being ready when the .create below is run (seems improbable though...)
         token.delete()
         token = token_model.objects.create(user=user)
     return token
