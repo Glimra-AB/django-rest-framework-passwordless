@@ -5,7 +5,7 @@ from django.core.exceptions import PermissionDenied
 from django.core.mail import send_mail
 from django.core.cache import cache
 from django.db import transaction
-from django.template import loader
+from django.template import loader, Template, Context
 from django.utils import timezone
 from drfpasswordless.models import CallbackToken
 from drfpasswordless.settings import api_settings
@@ -84,6 +84,9 @@ def send_email_with_callback_token(user, email_token, linkbase, **kwargs):
     Passes silently without sending in test environment
     """
 
+    if linkbase is None:
+        linkbase = api_settings.PASSWORDLESS_PROD_LINK_BASE
+    
     try:
         if api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS:
             # Make sure we have a sending address before sending.
@@ -98,11 +101,14 @@ def send_email_with_callback_token(user, email_token, linkbase, **kwargs):
 
             # Inject context if user specifies.
             context = inject_template_context({'callback_token': email_token.key,
-                                               'callback_linkbase': linkbase, })
-            html_message = loader.render_to_string(email_html, context,)
+                                               'callback_linkbase': linkbase })
+
+            plain_message_template = Template(email_plaintext)
+            html_message = loader.render_to_string(email_html, context)
+
             send_mail(
                 email_subject,
-                email_plaintext % (linkbase, email_token.key),
+                plain_message_template.render(Context(context)),
                 api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS,
                 [getattr(user, api_settings.PASSWORDLESS_USER_EMAIL_FIELD_NAME)],
                 fail_silently=False,
@@ -114,8 +120,8 @@ def send_email_with_callback_token(user, email_token, linkbase, **kwargs):
         return True
 
     except Exception as e:
-        logger.error("Failed to send token email to user: %d."
-                  "Possibly no email on user object. Email entered was %s" %
+        logger.error("Failed to send token email to user %d, "
+                  "possibly no email on user object. Email entered was %s" %
                   (user.id, getattr(user, api_settings.PASSWORDLESS_USER_EMAIL_FIELD_NAME)))
         logger.debug(e)
         return False
@@ -129,6 +135,9 @@ def send_sms_with_callback_token(user, mobile_token, linkbase, **kwargs):
     """
     base_string = kwargs.get('mobile_message', api_settings.PASSWORDLESS_MOBILE_MESSAGE)
 
+    if linkbase is None:
+        linkbase = api_settings.PASSWORDLESS_PROD_LINK_BASE
+    
     try:
 
         if api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER and api_settings.PASSWORDLESS_TWILIO_AUTH_TOKEN:
