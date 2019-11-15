@@ -150,6 +150,8 @@ class AbstractBaseObtainAuthToken(APIView):
         # The serializer validate() looks up the user in the callback token or refreshtoken table, and writes it in 'user' if it exists
         # Note that we can get here with an incoming refreshtoken even if USE_REFRESH_TOKENS is disabled, however it won't match any
         # in the table.
+        # TODO: we might want to send failed serializers to Sentry here preferably as some apps have had problems in this step. will cause
+        # spam though if bots find this endpoint.
         if serializer.is_valid(raise_exception=True):
             by_refresh_token = 'refresh_token' in request.data   # normally we get here by 'token' or 'refresh_token'
             user = serializer.validated_data['user']
@@ -188,7 +190,10 @@ class AbstractBaseObtainAuthToken(APIView):
                 refresh_token = None
                 
             # Consider this a login action for the user and update the user's last_login by sending a signal to django.contrib.auth
-            user_logged_in.send(sender=type(user), request=request, user=user)
+            # As the UserLogin log also receives this, include the by_refresh_token so we can log how the user logged in and
+            # the client's position if given.
+            user_logged_in.send(sender=type(user), request=request, user=user, by_refresh_token=by_refresh_token,
+                                pos_lat=serializer.validated_data.get('pos_lat'), pos_long=serializer.validated_data.get('pos_long'))
 
             # At this point we expire the CallbackToken(s) since the user is logged in, to reduce the chance of a spam robot finding the
             # combination during the 15 minutes the token is potentially valid after this. If something breaks here, the client will have
@@ -205,6 +210,7 @@ class AbstractBaseObtainAuthToken(APIView):
                                   'refresh_token': refresh_token.key.hex },
                                 status=status.HTTP_200_OK)
         else:
+            # Note: we will only get here if the is_valid does not throw an Exception (which it normally does for a malformed field)
             logger.error("Couldn't log in unknown user. Errors on serializer: {}".format(serializer.error_messages))
             
         return Response({'detail': 'Couldn\'t log you in. Try again later.'}, status=status.HTTP_400_BAD_REQUEST)

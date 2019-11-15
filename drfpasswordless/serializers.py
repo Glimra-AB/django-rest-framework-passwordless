@@ -221,8 +221,11 @@ class AbstractBaseCallbackTokenSerializer(serializers.Serializer):
     """
     token = TokenField(min_length=6, max_length=6)
 
-
+    
 class CallbackTokenAuthSerializer(AbstractBaseCallbackTokenSerializer):
+
+    pos_lat = serializers.DecimalField(max_digits=9, decimal_places=6, required=False)
+    pos_long = serializers.DecimalField(max_digits=9, decimal_places=6, required=False)
 
     def validate(self, attrs):
         try:
@@ -266,10 +269,13 @@ class AbstractBaseRefreshTokenSerializer(serializers.Serializer):
     Returns a user if valid, None or a message if not.
     """
     refresh_token = TokenField(min_length=32, max_length=32)  # uuid4 is 128-bits, expressed as a hex here so 32 chars
-
+    
 
 class RefreshTokenAuthSerializer(AbstractBaseRefreshTokenSerializer):
 
+    pos_lat = serializers.DecimalField(max_digits=9, decimal_places=6, required=False)
+    pos_long = serializers.DecimalField(max_digits=9, decimal_places=6, required=False)
+    
     def validate(self, attrs):
         if api_settings.PASSWORDLESS_USE_REFRESH_TOKENS:
             try:
