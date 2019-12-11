@@ -62,12 +62,14 @@ class AbstractBaseObtainCallbackToken(APIView):
             else:
                 linkbase = api_settings.PASSWORDLESS_PROD_LINK_BASE
 
+            if not user.is_active:  # in this case, mimic the user not being found at all (used for soft-deletion)
+                return Response(status=status.HTTP_404_NOT_FOUND)
+
             if not user.is_demo:
                 success = TokenService.send_token(user, self.alias_type, linkbase, **self.message_payload)
             else:
-                success = False # demo-users can't request new CallbackTokens
+                success = False
 
-            # Respond With Success Or Failure of Sent
             if success:
                 status_code = status.HTTP_200_OK
                 response_detail = self.success_response
