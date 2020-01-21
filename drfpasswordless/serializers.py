@@ -57,6 +57,9 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
         # The alias type, either email or mobile
         raise NotImplementedError
 
+    # Note: the ValidationError exceptions raised below, are caught and aggregated by DRF, so the is_valid() caller
+    # doesn't see them as exceptions
+    
     def validate(self, attrs):
         # We know this is there as it's marked required in the serializer field (email or mobile) below
         alias = attrs.get(self.alias_type)
