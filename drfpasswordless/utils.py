@@ -106,11 +106,26 @@ def send_email_with_callback_token(user, email_token, linkbase, **kwargs):
             plain_message_template = Template(email_plaintext)
             html_message = loader.render_to_string(email_html, context)
 
+            dest_address = getattr(user, api_settings.PASSWORDLESS_USER_EMAIL_FIELD_NAME)
+            
+            # UTF-8 is not allowed on Amazon SES in the domain-part, it has to be Punycode (IDNA) encoded
+            # https://docs.aws.amazon.com/ses/latest/DeveloperGuide/ses-errors.html
+            # Only the domain-part can be punycoded, not the user part!
+            
+            if '@' in dest_address:
+                email_destuser, email_destdomain = dest_address.split('@')
+                email_dest = '{}@{}'.format(email_destuser, email_destdomain.encode('idna').decode('ascii'))
+            else:
+                logger.error("Failed to extract user and domain from %s" % (dest_address))
+                return False
+
+            #print('Sending to {}'.format(email_dest))
+            
             send_mail(
                 email_subject,
                 plain_message_template.render(Context(context)),
                 api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS,
-                [getattr(user, api_settings.PASSWORDLESS_USER_EMAIL_FIELD_NAME)],
+                [ email_dest ],
                 fail_silently=False,
                 html_message=html_message,)
 
