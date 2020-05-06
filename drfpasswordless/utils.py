@@ -185,11 +185,12 @@ def send_sms_with_callback_token(user, mobile_token, linkbase, **kwargs):
         add_breadcrumb(message='Failed to send Twilio SMS',
                        category='login',
                        data={
-                           'error': str(e)
+                           'error': str(e),
+                           'uid': user.id,
+                           'mobile': getattr(user, api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME)
                        })
-        # This will also send to Sentry
-        logger.error("Failed to send token SMS to user {} and mobile {}".format(user.id,
-                                                                                getattr(user,
-                                                                                        api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME)))
-        logger.info(e)
+        # This will also send to Sentry (including the breadcrumbs above)
+        # Don't specify the mobile and user id in the string here as Sentry will not group then, the info is available in the crumbs
+        logger.error("Failed to send token SMS")
+#        logger.info(e)
         return False
