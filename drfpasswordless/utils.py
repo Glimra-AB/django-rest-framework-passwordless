@@ -155,21 +155,28 @@ def send_sms_with_callback_token(user, mobile_token, linkbase, **kwargs):
     
     try:
 
-        if api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER and api_settings.PASSWORDLESS_TWILIO_AUTH_TOKEN:
+        if api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER:
 
             # We need a sending number to send properly
             if api_settings.PASSWORDLESS_TEST_SUPPRESSION is True:
                 # we assume success to prevent spamming SMS during testing.
                 return True
 
-            from twilio.rest import Client
-            twilio_client = Client(api_settings.PASSWORDLESS_TWILIO_ACCOUNT_SID, api_settings.PASSWORDLESS_TWILIO_AUTH_TOKEN)
-            #print('Trying to send SMS to {}'.format(getattr(user, api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME)))
-            twilio_client.messages.create(
-                body=base_string % (linkbase, mobile_token.key),
-                to=getattr(user, api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME),
-                from_=api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER
-            )
+            sms_body = base_string % (linkbase, mobile_token.key)
+            
+            if api_settings.PASSWORDLESS_TWILIO_ACCOUNT_SID and api_settings.PASSWORDLESS_TWILIO_AUTH_TOKEN:
+                from twilio.rest import Client
+                twilio_client = Client(api_settings.PASSWORDLESS_TWILIO_ACCOUNT_SID, api_settings.PASSWORDLESS_TWILIO_AUTH_TOKEN)
+                #print('Trying to send SMS to {}'.format(getattr(user, api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME)))
+                twilio_client.messages.create(
+                    body=sms_body,
+                    to=getattr(user, api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME),
+                    from_=api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER
+                )
+            else:
+                # Twilio was disabled, just print out the sms we were going to send
+                print('Would have sent SMS to {}: {}'.format(getattr(user, api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME), sms_body))
+                
             return True
         else:
             logger.error("Failed to send token sms. Missing PASSWORDLESS_MOBILE_NOREPLY_NUMBER.")
