@@ -10,6 +10,8 @@ from drfpasswordless.settings import api_settings
 from drfpasswordless.utils import verify_user_alias
 from django.db.utils import IntegrityError
 
+from glimra.base.fields import PhoneNumberSerializerField
+
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
 
@@ -33,9 +35,6 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
     best (probably allow updating the user as long as the user is not verified, after that it has to be locked obviously)
     """
 
-    phone_regex = RegexValidator(regex=r'^\+?1?\d{9,15}$',
-                                 message="Mobile number must be entered in the format:"
-                                         " '+999999999'. Up to 15 digits allowed.")
     # We want to allow all national chars in the first/last names, but avoid HTML-style stuff etc. that could be
     # a security concern. TODO evaluate and check what works best.
     # \w matches alphanumerics and _, also add - and space to support Bengt-Ove etc. 
@@ -121,7 +120,7 @@ class EmailAuthSerializer(AbstractBaseAliasAuthenticationSerializer):
     # The email field is obviously required, but the mobile can be optional (and viceversa in the MobileAuthSerializer)
     # Note that if create=true is set (requesting user creation) then we do require all fields.
     email = serializers.EmailField(required=True)
-    mobile = serializers.CharField(validators=[AbstractBaseAliasAuthenticationSerializer.phone_regex], max_length=15, required=False)
+    mobile = PhoneNumberSerializerField(required=False)
 
 
 class MobileAuthSerializer(AbstractBaseAliasAuthenticationSerializer):
@@ -131,8 +130,7 @@ class MobileAuthSerializer(AbstractBaseAliasAuthenticationSerializer):
 
     # See above
     email = serializers.EmailField(required=False)
-    mobile = serializers.CharField(validators=[AbstractBaseAliasAuthenticationSerializer.phone_regex], max_length=15, required=True)
-
+    mobile = PhoneNumberSerializerField(required=True)
 
 """
 Verification
