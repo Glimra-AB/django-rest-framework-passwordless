@@ -225,8 +225,8 @@ class AbstractBaseCallbackTokenSerializer(serializers.Serializer):
     
 class CallbackTokenAuthSerializer(AbstractBaseCallbackTokenSerializer):
 
-    pos_lat = serializers.DecimalField(max_digits=14, decimal_places=11, required=False)
-    pos_long = serializers.DecimalField(max_digits=14, decimal_places=11, required=False)
+    pos_lat = serializers.DecimalField(max_digits=15, decimal_places=12, required=False)
+    pos_long = serializers.DecimalField(max_digits=15, decimal_places=12, required=False)
 
     def validate(self, attrs):
         try:
@@ -274,8 +274,8 @@ class AbstractBaseRefreshTokenSerializer(serializers.Serializer):
 
 class RefreshTokenAuthSerializer(AbstractBaseRefreshTokenSerializer):
 
-    pos_lat = serializers.DecimalField(max_digits=9, decimal_places=6, required=False)
-    pos_long = serializers.DecimalField(max_digits=9, decimal_places=6, required=False)
+    pos_lat = serializers.DecimalField(max_digits=15, decimal_places=12, required=False)
+    pos_long = serializers.DecimalField(max_digits=15, decimal_places=12, required=False)
     
     def validate(self, attrs):
         if api_settings.PASSWORDLESS_USE_REFRESH_TOKENS:
