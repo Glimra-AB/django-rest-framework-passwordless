@@ -35,7 +35,7 @@ class AbstractBaseObtainCallbackToken(APIView):
     failure_response = "Unable to send you a login code. Try again later."
 
     message_payload = {}
-
+    
     @property
     def serializer_class(self):
         # Our serializer depending on type
@@ -56,19 +56,28 @@ class AbstractBaseObtainCallbackToken(APIView):
         if serializer.is_valid(raise_exception=True):
             user = serializer.validated_data['user']
             # Create and send callback token
-            # If devlink=true is provided during the request, we use a different link base for the callback link, to support dev-apps
-            if 'devlink' in serializer.validated_data and serializer.validated_data['devlink']:
-                linkbase = api_settings.PASSWORDLESS_DEV_LINK_BASE
-            else:
-                linkbase = api_settings.PASSWORDLESS_PROD_LINK_BASE
 
+            payload = self.message_payload.copy()    # copy or we'll change the class-global dict...
+            
+            # If desktop=true is provided, we format the callback as a normal text and not a link (for use in desktop logins)
+            # Set linkbase to an empty string in that case, as the placeholder for it is in the SMS template anyway.
+            if serializer.validated_data.get('desktop', False):
+                payload['desktop'] = True
+                payload['linkbase'] = ''
+            else:
+                # If devlink=true is provided during the request, we use a different link base for the callback link, to support dev-apps
+                if serializer.validated_data.get('devlink', False):
+                    payload['linkbase'] = api_settings.PASSWORDLESS_DEV_LINK_BASE
+                else:
+                    payload['linkbase'] = api_settings.PASSWORDLESS_PROD_LINK_BASE
+                
             if not user.is_active:  # in this case, mimic the user not being found at all (used for soft-deletion)
                 return Response(status=status.HTTP_404_NOT_FOUND)
 
             if not user.is_demo:
                 # This can fail for various reasons: an SMS can fail to reach a valid mobile number, an email can have
                 # an incorrect domain. We get False back in those cases.
-                send_success = TokenService.send_token(user, self.alias_type, linkbase, **self.message_payload)
+                send_success = TokenService.send_token(user, self.alias_type, **payload)
             else:
                 send_success = False
 
@@ -110,7 +119,8 @@ class ObtainMobileCallbackToken(AbstractBaseObtainCallbackToken):
     alias_type = 'mobile'
 
     mobile_message = api_settings.PASSWORDLESS_MOBILE_MESSAGE
-    message_payload = {'mobile_message': mobile_message}
+    mobile_message_desktop = api_settings.PASSWORDLESS_MOBILE_MESSAGE_DESKTOP
+    message_payload = {'mobile_message': mobile_message, 'mobile_message_desktop': mobile_message_desktop}
 
 
 class ObtainEmailVerificationCallbackToken(AbstractBaseObtainCallbackToken):
@@ -140,7 +150,8 @@ class ObtainMobileVerificationCallbackToken(AbstractBaseObtainCallbackToken):
     alias_type = 'mobile'
 
     mobile_message = api_settings.PASSWORDLESS_MOBILE_MESSAGE
-    message_payload = {'mobile_message': mobile_message}
+    mobile_message_desktop = api_settings.PASSWORDLESS_MOBILE_MESSAGE_DESKTOP
+    message_payload = {'mobile_message': mobile_message, 'mobile_message_desktop': mobile_message_desktop}
 
 
 class AbstractBaseObtainAuthToken(APIView):

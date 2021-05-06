@@ -67,6 +67,7 @@ DEFAULTS = {
 
     # The message sent to mobile users logging in. Takes one string.
     'PASSWORDLESS_MOBILE_MESSAGE': "Use this code to log in: %s%s",
+    'PASSWORDLESS_MOBILE_MESSAGE_DESKTOP': "Use this code to log in: %s%s",
 
     # Registers previously unseen aliases as new users.
     'PASSWORDLESS_REGISTER_NEW_USERS': True,

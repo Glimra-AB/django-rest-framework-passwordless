@@ -77,15 +77,14 @@ def inject_template_context(context):
     return context
 
 
-def send_email_with_callback_token(user, email_token, linkbase, **kwargs):
+def send_email_with_callback_token(user, email_token, **kwargs):
     """
     Sends a Email to user.email.
 
     Passes silently without sending in test environment
     """
 
-    if linkbase is None:
-        linkbase = api_settings.PASSWORDLESS_PROD_LINK_BASE
+    linkbase = kwargs.get('linkbase', api_settings.PASSWORDLESS_PROD_LINK_BASE)
     
     try:
         if api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS:
@@ -142,17 +141,19 @@ def send_email_with_callback_token(user, email_token, linkbase, **kwargs):
         return False
 
 
-def send_sms_with_callback_token(user, mobile_token, linkbase, **kwargs):
+def send_sms_with_callback_token(user, mobile_token, **kwargs):
     """
     Sends a SMS to user.mobile via Twilio.
 
     Passes silently without sending in test environment.
     """
-    base_string = kwargs.get('mobile_message', api_settings.PASSWORDLESS_MOBILE_MESSAGE)
-
-    if linkbase is None:
-        linkbase = api_settings.PASSWORDLESS_PROD_LINK_BASE
     
+    linkbase = kwargs.get('linkbase', api_settings.PASSWORDLESS_PROD_LINK_BASE)
+    if kwargs.get('desktop', False):
+        base_string = kwargs.get('mobile_message_desktop', api_settings.PASSWORDLESS_MOBILE_MESSAGE_DESKTOP)
+    else:
+        base_string = kwargs.get('mobile_message', api_settings.PASSWORDLESS_MOBILE_MESSAGE)
+        
     try:
 
         if api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER:

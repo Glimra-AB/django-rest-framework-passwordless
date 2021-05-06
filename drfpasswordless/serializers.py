@@ -50,7 +50,10 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
 
     # True if we request the callback link using the dev link format (sent by dev apps)
     devlink = serializers.BooleanField(required=False)
-    
+
+    # True if we request the callback link to just send a code and not a clickable link (used for desktop web logins)
+    desktop = serializers.BooleanField(required=False)
+
     @property
     def alias_type(self):
         # The alias type, either email or mobile
