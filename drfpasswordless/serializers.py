@@ -65,6 +65,10 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
     def validate(self, attrs):
         # We know this is there as it's marked required in the serializer field (email or mobile) below
         alias = attrs.get(self.alias_type)
+        
+        # Since phone number / email are unique by country
+        # Default to Sweden for compatability
+        country = attrs.get('country', 'se')
 
         if alias:
             # Create or authenticate a user and return it. The client has to explicitly request creation by 'create',
@@ -73,7 +77,7 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                 # If new aliases should register new users.
                 # We can optionally allow registration of more user model fields at the same time, these are
                 # whitelisted in the settings variable and filtered here before passed to get_or_create
-                new_user_attrs = { self.alias_type: alias }
+                new_user_attrs = { self.alias_type: alias, 'country': country }
                 for fkey in api_settings.PASSWORDLESS_USER_CREATION_FIELDS:
                     val = attrs.get(fkey, None)
                     if val is not None:
@@ -95,7 +99,7 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                 try:
                     # TODO: allow updating the user with the new attrs at this point, if the user is not validated on either of the
                     # email or phone yet but is still existing in the database.
-                    user = UserModel.objects.get(**{self.alias_type: alias})
+                    user = UserModel.objects.get(**{self.alias_type: alias, 'country': country})
                 except UserModel.DoesNotExist:
                     user = None
 
