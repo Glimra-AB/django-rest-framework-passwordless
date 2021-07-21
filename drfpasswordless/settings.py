@@ -51,6 +51,7 @@ DEFAULTS = {
 
     'PASSWORDLESS_PROD_LINK_BASE': '',
     'PASSWORDLESS_DEV_LINK_BASE': '',
+    'PASSWORDLESS_FI_LINK_BASE': '',
 
     # A plaintext email message overridden by the html message. Takes one string.
     'PASSWORDLESS_EMAIL_PLAINTEXT_MESSAGE': "Enter this token to sign in: %s%s",
