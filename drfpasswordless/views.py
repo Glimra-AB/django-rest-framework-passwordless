@@ -66,8 +66,10 @@ class AbstractBaseObtainCallbackToken(APIView):
                 payload['linkbase'] = ''
             else:
                 # If devlink=true is provided during the request, we use a different link base for the callback link, to support dev-apps
-                if serializer.validated_data.get('devlink', False):
-                    payload['linkbase'] = api_settings.PASSWORDLESS_DEV_LINK_BASE
+                if serializer.validated_data.get("country", "") == "fi":
+                    payload["linkbase"] = api_settings.PASSWORDLESS_FI_LINK_BASE
+                elif serializer.validated_data.get("devlink", False):
+                    payload["linkbase"] = api_settings.PASSWORDLESS_DEV_LINK_BASE
                 else:
                     payload['linkbase'] = api_settings.PASSWORDLESS_PROD_LINK_BASE
                 
