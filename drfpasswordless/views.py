@@ -57,7 +57,10 @@ class AbstractBaseObtainCallbackToken(APIView):
             user = serializer.validated_data['user']
             # Create and send callback token
 
-            payload = self.message_payload.copy()    # copy or we'll change the class-global dict...
+            if serializer.validated_data.get("country", "") == "fi":
+                payload = self.message_payload_fi.copy()    # copy or we'll change the class-global dict...
+            else:
+                payload = self.message_payload.copy()    # copy or we'll change the class-global dict...
             
             # If desktop=true is provided, we format the callback as a normal text and not a link (for use in desktop logins)
             # Set linkbase to an empty string in that case, as the placeholder for it is in the SMS template anyway.
@@ -121,8 +124,10 @@ class ObtainMobileCallbackToken(AbstractBaseObtainCallbackToken):
     alias_type = 'mobile'
 
     mobile_message = api_settings.PASSWORDLESS_MOBILE_MESSAGE
+    mobile_message_fi = api_settings.PASSWORDLESS_MOBILE_MESSAGE_FI
     mobile_message_desktop = api_settings.PASSWORDLESS_MOBILE_MESSAGE_DESKTOP
     message_payload = {'mobile_message': mobile_message, 'mobile_message_desktop': mobile_message_desktop}
+    message_payload_fi = {'mobile_message': mobile_message_fi, 'mobile_message_desktop': mobile_message_desktop}
 
 
 class ObtainEmailVerificationCallbackToken(AbstractBaseObtainCallbackToken):
