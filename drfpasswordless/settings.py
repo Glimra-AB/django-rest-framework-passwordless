@@ -68,6 +68,8 @@ DEFAULTS = {
 
     # The message sent to mobile users logging in. Takes one string.
     'PASSWORDLESS_MOBILE_MESSAGE': "Use this code to log in: %s%s",
+    # The message sent to mobile users logging in. Takes one string.
+    'PASSWORDLESS_MOBILE_MESSAGE_FI': "Use this code to log in: %s%s",
     'PASSWORDLESS_MOBILE_MESSAGE_DESKTOP': "Use this code to log in: %s%s",
 
     # Registers previously unseen aliases as new users.
@@ -103,6 +105,11 @@ DEFAULTS = {
     # and with default non-time-limited auth tokens, it is best to reuse them, otherwise just create new tokens.
     # Note: with the normal rest framework, this can only be set to True (a User can't have multiple Tokens)
     'PASSWORDLESS_REUSE_AUTH_TOKENS': True,
+
+    # Number of digilets newly registred SE users get
+    "PASSWORDLESS_SE_NEW_USER_DIGILETS": 0,
+    # Number of digilets newly registred FI users get
+    "PASSWORDLESS_FI_NEW_USER_DIGILETS": 0,
 }
 
 # List of settings that may be in string import notation.
