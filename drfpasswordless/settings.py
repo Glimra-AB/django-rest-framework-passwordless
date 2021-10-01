@@ -66,6 +66,9 @@ DEFAULTS = {
     # Your twilio number that sends the callback tokens.
     'PASSWORDLESS_MOBILE_NOREPLY_NUMBER': None,
 
+    # Twilio number that sends Finnish callback tokens.
+    'PASSWORDLESS_MOBILE_NOREPLY_NUMBER_FI': None,
+
     # The message sent to mobile users logging in. Takes one string.
     'PASSWORDLESS_MOBILE_MESSAGE': "Use this code to log in: %s%s",
 
