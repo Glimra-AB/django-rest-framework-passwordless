@@ -68,7 +68,8 @@ DEFAULTS = {
 
     # The message sent to mobile users logging in. Takes one string.
     'PASSWORDLESS_MOBILE_MESSAGE': "Use this code to log in: %s%s",
-    # The message sent to mobile users logging in. Takes one string.
+
+    # The message sent to Finnish mobile users logging in. Takes one string.
     'PASSWORDLESS_MOBILE_MESSAGE_FI': "Use this code to log in: %s%s",
     'PASSWORDLESS_MOBILE_MESSAGE_DESKTOP': "Use this code to log in: %s%s",
 

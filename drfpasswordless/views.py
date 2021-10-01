@@ -125,8 +125,10 @@ class ObtainMobileCallbackToken(AbstractBaseObtainCallbackToken):
     alias_type = 'mobile'
 
     mobile_message = api_settings.PASSWORDLESS_MOBILE_MESSAGE
+    mobile_message_fi = api_settings.PASSWORDLESS_MOBILE_MESSAGE_FI
     mobile_message_desktop = api_settings.PASSWORDLESS_MOBILE_MESSAGE_DESKTOP
     message_payload = {'mobile_message': mobile_message, 'mobile_message_desktop': mobile_message_desktop}
+    message_payload_fi = {'mobile_message': mobile_message_fi, 'mobile_message_desktop': mobile_message_desktop}
 
 
 class ObtainEmailVerificationCallbackToken(AbstractBaseObtainCallbackToken):
@@ -155,8 +157,9 @@ class ObtainMobileVerificationCallbackToken(AbstractBaseObtainCallbackToken):
 
     alias_type = 'mobile'
 
-    mobile_message_fi = api_settings.PASSWORDLESS_MOBILE_MESSAGE_FI
+    
     mobile_message = api_settings.PASSWORDLESS_MOBILE_MESSAGE
+    mobile_message_fi = api_settings.PASSWORDLESS_MOBILE_MESSAGE_FI
     mobile_message_desktop = api_settings.PASSWORDLESS_MOBILE_MESSAGE_DESKTOP
     message_payload = {'mobile_message': mobile_message, 'mobile_message_desktop': mobile_message_desktop}
     message_payload_fi = {'mobile_message': mobile_message_fi, 'mobile_message_desktop': mobile_message_desktop}
