@@ -35,6 +35,7 @@ class AbstractBaseObtainCallbackToken(APIView):
     failure_response = "Unable to send you a login code. Try again later."
 
     message_payload = {}
+    message_payload_fi = {}
     
     @property
     def serializer_class(self):
@@ -57,7 +58,7 @@ class AbstractBaseObtainCallbackToken(APIView):
             user = serializer.validated_data['user']
             # Create and send callback token
 
-            if serializer.validated_data.get("country", "") == "fi":
+            if serializer.validated_data.get("country", "") == "fi" and self.message_payload_fi != {}:
                 payload = self.message_payload_fi.copy()    # copy or we'll change the class-global dict...
             else:
                 payload = self.message_payload.copy()    # copy or we'll change the class-global dict...
@@ -156,9 +157,12 @@ class ObtainMobileVerificationCallbackToken(AbstractBaseObtainCallbackToken):
 
     alias_type = 'mobile'
 
+    
     mobile_message = api_settings.PASSWORDLESS_MOBILE_MESSAGE
+    mobile_message_fi = api_settings.PASSWORDLESS_MOBILE_MESSAGE_FI
     mobile_message_desktop = api_settings.PASSWORDLESS_MOBILE_MESSAGE_DESKTOP
     message_payload = {'mobile_message': mobile_message, 'mobile_message_desktop': mobile_message_desktop}
+    message_payload_fi = {'mobile_message': mobile_message_fi, 'mobile_message_desktop': mobile_message_desktop}
 
 
 class AbstractBaseObtainAuthToken(APIView):

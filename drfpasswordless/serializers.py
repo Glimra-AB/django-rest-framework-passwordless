@@ -80,7 +80,14 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                 # If new aliases should register new users.
                 # We can optionally allow registration of more user model fields at the same time, these are
                 # whitelisted in the settings variable and filtered here before passed to get_or_create
-                new_user_attrs = { self.alias_type: alias, 'country': country }
+
+                if country == 'se':
+                    default_digilets = api_settings.PASSWORDLESS_SE_NEW_USER_DIGILETS 
+                else:
+                    default_digilets = api_settings.PASSWORDLESS_FI_NEW_USER_DIGILETS 
+
+                new_user_attrs = { self.alias_type: alias, 'country': country, 'digilets': default_digilets }
+
                 for fkey in api_settings.PASSWORDLESS_USER_CREATION_FIELDS:
                     val = attrs.get(fkey, None)
                     if val is not None:
