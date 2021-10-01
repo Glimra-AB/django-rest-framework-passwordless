@@ -155,8 +155,12 @@ def send_sms_with_callback_token(user, mobile_token, **kwargs):
         base_string = kwargs.get('mobile_message', api_settings.PASSWORDLESS_MOBILE_MESSAGE)
         
     try:
+        if user.country == 'fi':
+            source_number = api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER_FI
+        else:
+            source_number = api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER
 
-        if api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER:
+        if source_number:
 
             # We need a sending number to send properly
             if api_settings.PASSWORDLESS_TEST_SUPPRESSION is True:
@@ -172,7 +176,7 @@ def send_sms_with_callback_token(user, mobile_token, **kwargs):
                 twilio_client.messages.create(
                     body=sms_body,
                     to=getattr(user, api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME),
-                    from_=api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER
+                    from_=source_number
                 )
             else:
                 # Twilio was disabled, just print out the sms we were going to send
@@ -180,7 +184,7 @@ def send_sms_with_callback_token(user, mobile_token, **kwargs):
                 
             return True
         else:
-            logger.error("Failed to send token sms. Missing PASSWORDLESS_MOBILE_NOREPLY_NUMBER.")
+            logger.error("Failed to send token sms. Missing PASSWORDLESS_MOBILE_NOREPLY_NUMBER/FI.")
             return False
     except ImportError:
         logger.error("Couldn't import Twilio client. Is twilio installed?")

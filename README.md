@@ -170,6 +170,7 @@ variables.
 
 You’ll also need to specify the number you send the token from with the
 ``PASSWORDLESS_MOBILE_NOREPLY_NUMBER`` setting.
+``PASSWORDLESS_MOBILE_NOREPLY_NUMBER_FI`` setting.
 
 Templates
 =========
