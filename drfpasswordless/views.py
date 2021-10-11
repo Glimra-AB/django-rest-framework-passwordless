@@ -111,10 +111,18 @@ class ObtainEmailCallbackToken(AbstractBaseObtainCallbackToken):
     email_subject = api_settings.PASSWORDLESS_EMAIL_SUBJECT
     email_plaintext = api_settings.PASSWORDLESS_EMAIL_PLAINTEXT_MESSAGE
     email_html = api_settings.PASSWORDLESS_EMAIL_TOKEN_HTML_TEMPLATE_NAME
+
+    email_subject_fi = api_settings.PASSWORDLESS_EMAIL_SUBJECT_FI
+    email_plaintext_fi = api_settings.PASSWORDLESS_EMAIL_PLAINTEXT_MESSAGE_FI
+    email_html_fi = api_settings.PASSWORDLESS_EMAIL_TOKEN_HTML_TEMPLATE_NAME_FI
+
     message_payload = {'email_subject': email_subject,
                        'email_plaintext': email_plaintext,
                        'email_html': email_html}
 
+    message_payload_fi = {'email_subject': email_subject_fi,
+                          'email_plaintext': email_plaintext_fi,
+                          'email_html': email_html_fi}
 
 class ObtainMobileCallbackToken(AbstractBaseObtainCallbackToken):
     permission_classes = (AllowAny,)

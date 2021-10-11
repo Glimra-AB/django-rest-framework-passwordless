@@ -46,6 +46,9 @@ DEFAULTS = {
     # The email the callback token is sent from
     'PASSWORDLESS_EMAIL_NOREPLY_ADDRESS': None,
 
+    # The email Finnish callback token is sent from
+    'PASSWORDLESS_EMAIL_NOREPLY_ADDRESS_FI': None,
+
     # The email subject
     'PASSWORDLESS_EMAIL_SUBJECT': "Your Login Token",
 
@@ -56,8 +59,17 @@ DEFAULTS = {
     # A plaintext email message overridden by the html message. Takes one string.
     'PASSWORDLESS_EMAIL_PLAINTEXT_MESSAGE': "Enter this token to sign in: %s%s",
 
+    # A plaintext email message overridden by the html message. Takes one string.
+    'PASSWORDLESS_EMAIL_PLAINTEXT_MESSAGE_FI': "Enter this token to sign in: %s%s",
+
     # The email template name.
     'PASSWORDLESS_EMAIL_TOKEN_HTML_TEMPLATE_NAME': "passwordless_default_token_email.html",
+
+    # The email template name.
+    'PASSWORDLESS_EMAIL_TOKEN_HTML_TEMPLATE_NAME_FI': "passwordless_default_token_email.html",
+
+    'PASSWORDLESS_EMAIL_SUBJECT_FI': None,
+    'PASSWORDLESS_MOBILE_MESSAGE_DESKTOP_FI': None,
 
     # Twilio account credentials
     'PASSWORDLESS_TWILIO_ACCOUNT_SID': None,

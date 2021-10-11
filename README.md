@@ -262,6 +262,9 @@ DEFAULTS = {
     # The email template name.
     'PASSWORDLESS_EMAIL_TOKEN_HTML_TEMPLATE_NAME': "passwordless_default_token_email.html",
 
+    # The Finnish email template name.
+    'PASSWORDLESS_EMAIL_TOKEN_HTML_TEMPLATE_NAME_FI': "passwordless_default_token_email_fi.html",
+
     # Your twilio number that sends the callback tokens.
     'PASSWORDLESS_MOBILE_NOREPLY_NUMBER': None,
 
