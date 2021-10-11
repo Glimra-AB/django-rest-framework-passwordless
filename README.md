@@ -170,6 +170,7 @@ variables.
 
 You’ll also need to specify the number you send the token from with the
 ``PASSWORDLESS_MOBILE_NOREPLY_NUMBER`` setting.
+``PASSWORDLESS_MOBILE_NOREPLY_NUMBER_FI`` setting.
 
 Templates
 =========
@@ -260,6 +261,9 @@ DEFAULTS = {
 
     # The email template name.
     'PASSWORDLESS_EMAIL_TOKEN_HTML_TEMPLATE_NAME': "passwordless_default_token_email.html",
+
+    # The Finnish email template name.
+    'PASSWORDLESS_EMAIL_TOKEN_HTML_TEMPLATE_NAME_FI': "passwordless_default_token_email_fi.html",
 
     # Your twilio number that sends the callback tokens.
     'PASSWORDLESS_MOBILE_NOREPLY_NUMBER': None,

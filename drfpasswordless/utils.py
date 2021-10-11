@@ -84,19 +84,34 @@ def send_email_with_callback_token(user, email_token, **kwargs):
     Passes silently without sending in test environment
     """
 
-    linkbase = kwargs.get('linkbase', api_settings.PASSWORDLESS_PROD_LINK_BASE)
-    
     try:
         if api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS:
             # Make sure we have a sending address before sending.
 
             # Get email subject and message
-            email_subject = kwargs.get('email_subject',
-                                       api_settings.PASSWORDLESS_EMAIL_SUBJECT)
-            email_plaintext = kwargs.get('email_plaintext',
-                                         api_settings.PASSWORDLESS_EMAIL_PLAINTEXT_MESSAGE)
-            email_html = kwargs.get('email_html',
-                                    api_settings.PASSWORDLESS_EMAIL_TOKEN_HTML_TEMPLATE_NAME)
+            if user.country == 'fi':
+                email_subject = kwargs.get('email_subject',
+                                        api_settings.PASSWORDLESS_EMAIL_SUBJECT_FI)
+                email_plaintext = kwargs.get('email_plaintext',
+                                            api_settings.PASSWORDLESS_EMAIL_PLAINTEXT_MESSAGE_FI)
+                email_html = kwargs.get('email_html',
+                                        api_settings.PASSWORDLESS_EMAIL_TOKEN_HTML_TEMPLATE_NAME_FI)
+
+                source_address = api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS_FI
+
+                linkbase = kwargs.get('linkbase', api_settings.PASSWORDLESS_FI_LINK_BASE)
+    
+            else:
+                email_subject = kwargs.get('email_subject',
+                                        api_settings.PASSWORDLESS_EMAIL_SUBJECT)
+                email_plaintext = kwargs.get('email_plaintext',
+                                            api_settings.PASSWORDLESS_EMAIL_PLAINTEXT_MESSAGE)
+                email_html = kwargs.get('email_html',
+                                        api_settings.PASSWORDLESS_EMAIL_TOKEN_HTML_TEMPLATE_NAME)
+
+                source_address = api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS
+
+                linkbase = kwargs.get('linkbase', api_settings.PASSWORDLESS_PROD_LINK_BASE)
 
             # Inject context if user specifies.
             context = inject_template_context({'callback_token': email_token.key,
@@ -119,11 +134,11 @@ def send_email_with_callback_token(user, email_token, **kwargs):
                 return False
 
             #print('Sending to {}'.format(email_dest))
-            
+
             send_mail(
                 email_subject,
                 plain_message_template.render(Context(context)),
-                api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS,
+                source_address,
                 [ email_dest ],
                 fail_silently=False,
                 html_message=html_message,)
@@ -147,16 +162,31 @@ def send_sms_with_callback_token(user, mobile_token, **kwargs):
 
     Passes silently without sending in test environment.
     """
-    
-    linkbase = kwargs.get('linkbase', api_settings.PASSWORDLESS_PROD_LINK_BASE)
-    if kwargs.get('desktop', False):
-        base_string = kwargs.get('mobile_message_desktop', api_settings.PASSWORDLESS_MOBILE_MESSAGE_DESKTOP)
-    else:
-        base_string = kwargs.get('mobile_message', api_settings.PASSWORDLESS_MOBILE_MESSAGE)
-        
-    try:
 
-        if api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER:
+    if user.country == 'fi':
+        linkbase = kwargs.get('linkbase', api_settings.PASSWORDLESS_FI_LINK_BASE)
+        source_number = api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER_FI
+
+        if kwargs.get('desktop', False):
+            base_string = kwargs.get('mobile_message_desktop', api_settings.PASSWORDLESS_MOBILE_MESSAGE_DESKTOP_FI)
+        else:
+            base_string = kwargs.get('mobile_message', api_settings.PASSWORDLESS_MOBILE_MESSAGE)
+    else:
+        linkbase = kwargs.get('linkbase', api_settings.PASSWORDLESS_PROD_LINK_BASE)
+        source_number = api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER
+
+        if kwargs.get('desktop', False):
+            base_string = kwargs.get('mobile_message_desktop', api_settings.PASSWORDLESS_MOBILE_MESSAGE_DESKTOP)
+        else:
+            base_string = kwargs.get('mobile_message', api_settings.PASSWORDLESS_MOBILE_MESSAGE)
+
+    try:
+        if user.country == 'fi':
+            source_number = api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER_FI
+        else:
+            source_number = api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER
+
+        if source_number:
 
             # We need a sending number to send properly
             if api_settings.PASSWORDLESS_TEST_SUPPRESSION is True:
@@ -172,7 +202,7 @@ def send_sms_with_callback_token(user, mobile_token, **kwargs):
                 twilio_client.messages.create(
                     body=sms_body,
                     to=getattr(user, api_settings.PASSWORDLESS_USER_MOBILE_FIELD_NAME),
-                    from_=api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER
+                    from_=source_number
                 )
             else:
                 # Twilio was disabled, just print out the sms we were going to send
@@ -180,7 +210,7 @@ def send_sms_with_callback_token(user, mobile_token, **kwargs):
                 
             return True
         else:
-            logger.error("Failed to send token sms. Missing PASSWORDLESS_MOBILE_NOREPLY_NUMBER.")
+            logger.error("Failed to send token sms. Missing PASSWORDLESS_MOBILE_NOREPLY_NUMBER/FI.")
             return False
     except ImportError:
         logger.error("Couldn't import Twilio client. Is twilio installed?")
