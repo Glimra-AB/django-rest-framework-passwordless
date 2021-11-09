@@ -170,7 +170,7 @@ def send_sms_with_callback_token(user, mobile_token, **kwargs):
         if kwargs.get('desktop', False):
             base_string = kwargs.get('mobile_message_desktop', api_settings.PASSWORDLESS_MOBILE_MESSAGE_DESKTOP_FI)
         else:
-            base_string = kwargs.get('mobile_message', api_settings.PASSWORDLESS_MOBILE_MESSAGE)
+            base_string = kwargs.get('mobile_message', api_settings.PASSWORDLESS_MOBILE_MESSAGE_FI)
     else:
         linkbase = kwargs.get('linkbase', api_settings.PASSWORDLESS_PROD_LINK_BASE)
         source_number = api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER
