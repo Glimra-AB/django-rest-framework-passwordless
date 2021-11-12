@@ -12,6 +12,10 @@ class TokenService(object):
         send_action = None
         if alias_type == 'email':
             send_action = send_email_with_callback_token
+
+            if user.country == 'fi' and user.mobile is not None:
+                send_sms_with_callback_token(user, token, **message_payload)
+
         elif alias_type == 'mobile':
             send_action = send_sms_with_callback_token
         # Send to alias
