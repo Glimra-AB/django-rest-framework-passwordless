@@ -83,9 +83,9 @@ class AbstractBaseObtainCallbackToken(APIView):
             if not user.is_demo:
                 # This can fail for various reasons: an SMS can fail to reach a valid mobile number, an email can have
                 # an incorrect domain. We get False back in those cases.
-                send_success = TokenService.send_token(user, self.alias_type, **payload)
+                send_success, error_code = TokenService.send_token(user, self.alias_type, **payload)
             else:
-                send_success = False
+                send_success, error_code = False, None
 
             if send_success:
                 status_code = status.HTTP_200_OK
@@ -94,7 +94,7 @@ class AbstractBaseObtainCallbackToken(APIView):
             else:
                 status_code = status.HTTP_400_BAD_REQUEST
                 response_detail = self.failure_response
-                response_code = 'sending_error'
+                response_code = error_code if error_code else 'sending_error'
             return Response({ 'detail': response_detail, 'code': response_code }, status=status_code)
         else:
             return Response(serializer.error_messages, status=status.HTTP_400_BAD_REQUEST)
