@@ -10,8 +10,11 @@ from drfpasswordless.settings import api_settings
 # This is an override of django rest frameworks TokenAuthentication class, replacing the authenticate_credentials function to
 # check expiration time of the auth tokens
 
+def is_exempt_from_expiry(user):
+    return user.is_staff or user.is_washotron or user.is_pos
+
 def is_token_expired(token):
-    return (token.created < (timezone.now() - timedelta(seconds=api_settings.PASSWORDLESS_AUTHTOKEN_EXPIRE_TIME)))
+    return not is_exempt_from_expiry(token.user) and (token.created < (timezone.now() - timedelta(seconds=api_settings.PASSWORDLESS_AUTHTOKEN_EXPIRE_TIME)))
 
 def token_expiration_time(token):
     return (token.created + timedelta(seconds=api_settings.PASSWORDLESS_AUTHTOKEN_EXPIRE_TIME))
