@@ -20,5 +20,4 @@ class TokenService(object):
             else:
                 return False, error_code
         # Send to alias
-        success = send_action(user, token, **message_payload)
-        return success, None
+        return user.send_action(alias_type, send_action, token, **message_payload)
