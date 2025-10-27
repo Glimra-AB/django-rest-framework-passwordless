@@ -1,11 +1,14 @@
 from datetime import timedelta
+from django.conf import settings
 from django.utils import timezone
 
 from rest_framework.authentication import TokenAuthentication
-from rest_framework import serializers,exceptions
-from rest_auth.models import TokenModel
-
+from rest_framework import serializers, exceptions
+from rest_framework.authtoken.models import Token as DefaultTokenModel
 from drfpasswordless.settings import api_settings
+
+
+TokenModel = getattr(settings, "REST_AUTH_TOKEN_MODEL", DefaultTokenModel)
 
 # This is an override of django rest frameworks TokenAuthentication class, replacing the authenticate_credentials function to
 # check expiration time of the auth tokens
