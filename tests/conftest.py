@@ -19,6 +19,10 @@ def pytest_configure():
     sys.modules.setdefault('glimra.base', base_module)
     sys.modules.setdefault('glimra.base.fields', fields_module)
 
+    sentry_sdk_module = types.ModuleType('sentry_sdk')
+    sentry_sdk_module.add_breadcrumb = lambda *args, **kwargs: None
+    sys.modules.setdefault('sentry_sdk', sentry_sdk_module)
+
     settings.configure(
         DEBUG_PROPAGATE_EXCEPTIONS=True,
         DATABASES={
