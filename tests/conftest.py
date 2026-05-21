@@ -1,5 +1,23 @@
+import sys
+import types
+
+
 def pytest_configure():
     from django.conf import settings
+    from rest_framework import serializers
+
+    glimra_module = types.ModuleType('glimra')
+    base_module = types.ModuleType('glimra.base')
+    fields_module = types.ModuleType('glimra.base.fields')
+
+    class PhoneNumberSerializerField(serializers.RegexField):
+        def __init__(self, **kwargs):
+            super().__init__(r'^\+?1?\d{9,15}$', **kwargs)
+
+    fields_module.PhoneNumberSerializerField = PhoneNumberSerializerField
+    sys.modules.setdefault('glimra', glimra_module)
+    sys.modules.setdefault('glimra.base', base_module)
+    sys.modules.setdefault('glimra.base.fields', fields_module)
 
     settings.configure(
         DEBUG_PROPAGATE_EXCEPTIONS=True,
@@ -15,6 +33,7 @@ def pytest_configure():
         USE_L10N=True,
         STATIC_URL='/static/',
         ROOT_URLCONF='tests.urls',
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
         TEMPLATES=[
             {
                 'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -30,7 +49,7 @@ def pytest_configure():
                 },
             },
         ],
-        MIDDLEWARE_CLASSES=(
+        MIDDLEWARE=(
             'django.middleware.common.CommonMiddleware',
             'django.contrib.sessions.middleware.SessionMiddleware',
             'django.middleware.csrf.CsrfViewMiddleware',

@@ -19,14 +19,14 @@ class EmailSignUpCallbackTokenTests(APITestCase):
 
     def test_email_signup_failed(self):
         email = 'failedemail182+'
-        data = {'email': email}
+        data = {'email': email, 'create': True}
 
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_email_signup_success(self):
         email = 'aaron@example.com'
-        data = {'email': email}
+        data = {'email': email, 'create': True}
 
         # Verify user doesn't exist yet
         user = User.objects.filter(**{self.email_field_name: 'aaron@example.com'}).first()
@@ -51,7 +51,7 @@ class EmailSignUpCallbackTokenTests(APITestCase):
         self.assertEqual(user, None)
 
         email = 'aaron@example.com'
-        data = {'email': email}
+        data = {'email': email, 'create': True}
 
         # verify a new user was not created
         response = self.client.post(self.url, data)
@@ -162,14 +162,14 @@ class MobileSignUpCallbackTokenTests(APITestCase):
 
     def test_mobile_signup_failed(self):
         mobile = 'sidfj98zfd'
-        data = {'mobile': mobile}
+        data = {'mobile': mobile, 'create': True}
 
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_mobile_signup_success(self):
         mobile = '+15551234567'
-        data = {'mobile': mobile}
+        data = {'mobile': mobile, 'create': True}
 
         # Verify user doesn't exist yet
         user = User.objects.filter(**{self.mobile_field_name: '+15551234567'}).first()
@@ -194,7 +194,7 @@ class MobileSignUpCallbackTokenTests(APITestCase):
         self.assertEqual(user, None)
 
         mobile = '+15557654321'
-        data = {'mobile': mobile}
+        data = {'mobile': mobile, 'create': True}
 
         # verify a new user was not created
         response = self.client.post(self.url, data)
