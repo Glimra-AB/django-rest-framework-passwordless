@@ -108,6 +108,9 @@ __pycache__/
 *.db
 *~
 .*
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
 .idea/
 .cache/
 
