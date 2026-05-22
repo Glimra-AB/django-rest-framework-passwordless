@@ -2,8 +2,8 @@ import sys
 import types
 
 
-def pytest_configure():
-    from django.conf import settings
+def install_project_dependency_shims():
+    """Provide minimal stand-ins for Glimra-only dependencies used at import time."""
     from rest_framework import serializers
 
     glimra_module = types.ModuleType('glimra')
@@ -22,6 +22,12 @@ def pytest_configure():
     sentry_sdk_module = types.ModuleType('sentry_sdk')
     sentry_sdk_module.add_breadcrumb = lambda *args, **kwargs: None
     sys.modules.setdefault('sentry_sdk', sentry_sdk_module)
+
+
+def pytest_configure():
+    from django.conf import settings
+
+    install_project_dependency_shims()
 
     settings.configure(
         DEBUG_PROPAGATE_EXCEPTIONS=True,
