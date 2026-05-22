@@ -25,7 +25,7 @@ class AliasEmailVerificationTests(APITestCase):
     def test_email_unverified_to_verified_and_back(self):
         email = 'aaron@example.com'
         email2 = 'aaron2@example.com'
-        data = {'email': email}
+        data = {'email': email, 'create': True}
 
         # create a new user
         response = self.client.post(self.url, data)
@@ -79,7 +79,7 @@ class AliasEmailVerificationTests(APITestCase):
     def tearDown(self):
         api_settings.PASSWORDLESS_AUTH_TYPES = DEFAULTS['PASSWORDLESS_AUTH_TYPES']
         api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS = DEFAULTS['PASSWORDLESS_EMAIL_NOREPLY_ADDRESS']
-        api_settings.PASSWORDLESS_USER_MARK_EMAIL_VERIFIED = DEFAULTS['PASSWORDLESS_USER_MARK_MOBILE_VERIFIED']
+        api_settings.PASSWORDLESS_USER_MARK_EMAIL_VERIFIED = DEFAULTS['PASSWORDLESS_USER_MARK_EMAIL_VERIFIED']
 
 
 class AliasMobileVerificationTests(APITestCase):
@@ -100,7 +100,7 @@ class AliasMobileVerificationTests(APITestCase):
     def test_mobile_unverified_to_verified_and_back(self):
         mobile = '+15551234567'
         mobile2 = '+15557654321'
-        data = {'mobile': mobile}
+        data = {'mobile': mobile, 'create': True}
 
         # create a new user
         response = self.client.post(self.url, data)
@@ -154,5 +154,5 @@ class AliasMobileVerificationTests(APITestCase):
     def tearDown(self):
         api_settings.PASSWORDLESS_TEST_SUPPRESSION = DEFAULTS['PASSWORDLESS_TEST_SUPPRESSION']
         api_settings.PASSWORDLESS_AUTH_TYPES = DEFAULTS['PASSWORDLESS_AUTH_TYPES']
-        api_settings.PASSWORDLESS_MOBILE_NOREPLY_ADDRESS = DEFAULTS['PASSWORDLESS_MOBILE_NOREPLY_NUMBER']
+        api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER = DEFAULTS['PASSWORDLESS_MOBILE_NOREPLY_NUMBER']
         api_settings.PASSWORDLESS_USER_MARK_MOBILE_VERIFIED = DEFAULTS['PASSWORDLESS_USER_MARK_MOBILE_VERIFIED']
