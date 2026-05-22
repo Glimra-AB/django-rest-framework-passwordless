@@ -4,6 +4,7 @@ from rest_framework.test import APITestCase
 
 from django.contrib.auth import get_user_model
 from drfpasswordless.settings import api_settings, DEFAULTS
+from drfpasswordless.serializers import EmailAuthSerializer, MobileAuthSerializer
 from drfpasswordless.utils import CallbackToken
 
 User = get_user_model()
@@ -66,6 +67,107 @@ class EmailSignUpCallbackTokenTests(APITestCase):
     def tearDown(self):
         api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS = DEFAULTS['PASSWORDLESS_EMAIL_NOREPLY_ADDRESS']
         api_settings.PASSWORDLESS_REGISTER_NEW_USERS = DEFAULTS['PASSWORDLESS_REGISTER_NEW_USERS']
+
+
+class AccessScopeMappingTests(APITestCase):
+
+    def test_omitted_country_maps_to_glimra(self):
+        serializer = EmailAuthSerializer(data={
+            'email': 'aaron@example.com',
+            'create': True,
+        })
+        self.assertEqual(serializer.is_valid(), True)
+
+        user = serializer.validated_data['user']
+        self.assertEqual(user.country, 'se')
+        self.assertEqual(user.access_scope, 'glimra')
+        self.assertEqual(serializer.validated_data['country'], 'se')
+        self.assertEqual(serializer.validated_data['access_scope'], 'glimra')
+
+    def test_sweden_maps_to_glimra(self):
+        serializer = EmailAuthSerializer(data={
+            'email': 'aaron@example.com',
+            'country': 'se',
+            'create': True,
+        })
+        self.assertEqual(serializer.is_valid(), True)
+
+        user = serializer.validated_data['user']
+        self.assertEqual(user.country, 'se')
+        self.assertEqual(user.access_scope, 'glimra')
+
+    def test_finland_maps_to_juhlapesu(self):
+        serializer = EmailAuthSerializer(data={
+            'email': 'aaron@example.com',
+            'country': 'fi',
+            'create': True,
+        })
+        self.assertEqual(serializer.is_valid(), True)
+
+        user = serializer.validated_data['user']
+        self.assertEqual(user.country, 'fi')
+        self.assertEqual(user.access_scope, 'juhlapesu')
+
+    def test_unsupported_country_is_rejected(self):
+        serializer = EmailAuthSerializer(data={
+            'email': 'aaron@example.com',
+            'country': 'no',
+            'create': True,
+        })
+        self.assertEqual(serializer.is_valid(), False)
+        self.assertIn('country', serializer.errors)
+
+    def test_same_email_can_exist_in_different_access_scopes(self):
+        email = 'aaron@example.com'
+        glimra_user = User.objects.create(email=email, country='se', access_scope='glimra')
+        juhlapesu_user = User.objects.create(email=email, country='fi', access_scope='juhlapesu')
+
+        se_serializer = EmailAuthSerializer(data={'email': email, 'country': 'se'})
+        fi_serializer = EmailAuthSerializer(data={'email': email, 'country': 'fi'})
+
+        self.assertEqual(se_serializer.is_valid(), True)
+        self.assertEqual(fi_serializer.is_valid(), True)
+        self.assertEqual(se_serializer.validated_data['user'], glimra_user)
+        self.assertEqual(fi_serializer.validated_data['user'], juhlapesu_user)
+
+    def test_existing_email_fails_registration_in_same_access_scope(self):
+        email = 'aaron@example.com'
+        User.objects.create(email=email, country='se', access_scope='glimra', digilets=1)
+
+        serializer = EmailAuthSerializer(data={
+            'email': email,
+            'country': 'se',
+            'create': True,
+        })
+
+        self.assertEqual(serializer.is_valid(), False)
+        self.assertIn('non_field_errors', serializer.errors)
+
+    def test_same_mobile_can_exist_in_different_access_scopes(self):
+        mobile = '+15551234567'
+        glimra_user = User.objects.create(mobile=mobile, country='se', access_scope='glimra')
+        juhlapesu_user = User.objects.create(mobile=mobile, country='fi', access_scope='juhlapesu')
+
+        se_serializer = MobileAuthSerializer(data={'mobile': mobile, 'country': 'se'})
+        fi_serializer = MobileAuthSerializer(data={'mobile': mobile, 'country': 'fi'})
+
+        self.assertEqual(se_serializer.is_valid(), True)
+        self.assertEqual(fi_serializer.is_valid(), True)
+        self.assertEqual(se_serializer.validated_data['user'], glimra_user)
+        self.assertEqual(fi_serializer.validated_data['user'], juhlapesu_user)
+
+    def test_existing_mobile_fails_registration_in_same_access_scope(self):
+        mobile = '+15551234567'
+        User.objects.create(mobile=mobile, country='se', access_scope='glimra', digilets=1)
+
+        serializer = MobileAuthSerializer(data={
+            'mobile': mobile,
+            'country': 'se',
+            'create': True,
+        })
+
+        self.assertEqual(serializer.is_valid(), False)
+        self.assertIn('non_field_errors', serializer.errors)
 
 
 class EmailLoginCallbackTokenTests(APITestCase):

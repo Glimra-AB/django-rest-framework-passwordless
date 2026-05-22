@@ -9,12 +9,13 @@ phone_regex = RegexValidator(regex=r'^\+?1?\d{9,15}$',
 
 
 class CustomUser(AbstractBaseUser):
-    email = models.EmailField(max_length=255, unique=True, blank=True, null=True)
+    email = models.EmailField(max_length=255, blank=True, null=True)
     email_verified = models.BooleanField(default=False)
 
-    mobile = models.CharField(validators=[phone_regex], max_length=15, unique=True, blank=True, null=True)
+    mobile = models.CharField(validators=[phone_regex], max_length=15, blank=True, null=True)
     mobile_verified = models.BooleanField(default=False)
     country = models.CharField(default='se', max_length=2)
+    access_scope = models.CharField(default='glimra', max_length=32)
     digilets = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
     is_demo = models.BooleanField(default=False)
@@ -42,3 +43,7 @@ class CustomUser(AbstractBaseUser):
 
     class Meta:
         app_label = 'tests'
+        unique_together = (
+            ('email', 'access_scope'),
+            ('mobile', 'access_scope'),
+        )
