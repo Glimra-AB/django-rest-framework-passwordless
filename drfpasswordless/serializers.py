@@ -15,6 +15,24 @@ from glimra.base.fields import PhoneNumberSerializerField
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
 
+COUNTRY_TO_ACCESS_SCOPE = {
+    'se': 'glimra',
+    'fi': 'juhlapesu',
+}
+DEFAULT_COUNTRY = 'se'
+
+
+def get_country_and_access_scope(country):
+    country = country or DEFAULT_COUNTRY
+    country = country.lower()
+
+    try:
+        return country, COUNTRY_TO_ACCESS_SCOPE[country]
+    except KeyError:
+        raise serializers.ValidationError({
+            'country': _('Unsupported country.')
+        })
+
 
 class TokenField(serializers.CharField):
     default_error_messages = {
@@ -69,9 +87,9 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
         # We know this is there as it's marked required in the serializer field (email or mobile) below
         alias = attrs.get(self.alias_type)
         
-        # Since phone number / email are unique by country
-        # Default to Sweden for compatability
-        country = attrs.get('country', 'se')
+        # Since phone number / email are unique by access scope.
+        # Keep country in the API for compatibility, and map it internally.
+        country, access_scope = get_country_and_access_scope(attrs.get('country'))
 
         if alias:
             # Create or authenticate a user and return it. The client has to explicitly request creation by 'create',
@@ -86,7 +104,8 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                 else:
                     default_digilets = api_settings.PASSWORDLESS_FI_NEW_USER_DIGILETS 
 
-                new_user_attrs = { self.alias_type: alias, 'country': country, 'digilets': default_digilets }
+                new_user_attrs = { self.alias_type: alias, 'country': country,
+                                   'access_scope': access_scope, 'digilets': default_digilets }
 
                 for fkey in api_settings.PASSWORDLESS_USER_CREATION_FIELDS:
                     val = attrs.get(fkey, None)
@@ -109,7 +128,7 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                 try:
                     # TODO: allow updating the user with the new attrs at this point, if the user is not validated on either of the
                     # email or phone yet but is still existing in the database.
-                    user = UserModel.objects.get(**{self.alias_type: alias, 'country': country})
+                    user = UserModel.objects.get(**{self.alias_type: alias, 'access_scope': access_scope})
                 except UserModel.DoesNotExist:
                     user = None
 
@@ -126,6 +145,8 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
             raise serializers.ValidationError(msg)
 
         attrs['user'] = user
+        attrs['country'] = country
+        attrs['access_scope'] = access_scope
         return attrs
 
 
