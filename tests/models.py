@@ -15,7 +15,7 @@ class CustomUser(AbstractBaseUser):
     mobile = models.CharField(validators=[phone_regex], max_length=15, blank=True, null=True)
     mobile_verified = models.BooleanField(default=False)
     country = models.CharField(default='se', max_length=2)
-    access_scope = models.CharField(default='glimra', max_length=32)
+    access_scope = models.CharField(default='glimra', max_length=32, null=True)
     digilets = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
     is_demo = models.BooleanField(default=False)

@@ -43,6 +43,22 @@ class EmailSignUpCallbackTokenTests(APITestCase):
         # Verify a token exists for the user
         self.assertEqual(CallbackToken.objects.filter(user=user, is_active=True).exists(), 1)
 
+    def test_second_email_signup_request_is_rejected(self):
+        email = 'aaron@example.com'
+        data = {'email': email, 'create': True}
+
+        first_response = self.client.post(self.url, data)
+        self.assertEqual(first_response.status_code, status.HTTP_200_OK)
+
+        user = User.objects.get(**{self.email_field_name: email})
+        CallbackToken.objects.filter(user=user).delete()
+
+        second_response = self.client.post(self.url, data)
+
+        self.assertEqual(second_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(User.objects.filter(**{self.email_field_name: email}).count(), 1)
+        self.assertEqual(CallbackToken.objects.filter(user=user, is_active=True).count(), 0)
+
     def test_email_signup_disabled(self):
         api_settings.PASSWORDLESS_REGISTER_NEW_USERS = False
 
@@ -108,6 +124,42 @@ class AccessScopeMappingTests(APITestCase):
         self.assertEqual(user.country, 'fi')
         self.assertEqual(user.access_scope, 'juhlapesu')
 
+    def test_existing_email_with_null_access_scope_is_found_by_country(self):
+        email = 'aaron@example.com'
+        existing_user = User.objects.create(email=email, country='fi', access_scope=None)
+
+        serializer = EmailAuthSerializer(data={'email': email, 'country': 'fi'})
+
+        self.assertEqual(serializer.is_valid(), True)
+        self.assertEqual(serializer.validated_data['user'], existing_user)
+        self.assertIsNone(serializer.validated_data['user'].access_scope)
+        self.assertEqual(serializer.validated_data['access_scope'], 'juhlapesu')
+
+    def test_existing_mobile_with_null_access_scope_is_found_by_country(self):
+        mobile = '+15551234567'
+        existing_user = User.objects.create(mobile=mobile, country='se', access_scope=None)
+
+        serializer = MobileAuthSerializer(data={'mobile': mobile, 'country': 'se'})
+
+        self.assertEqual(serializer.is_valid(), True)
+        self.assertEqual(serializer.validated_data['user'], existing_user)
+        self.assertIsNone(serializer.validated_data['user'].access_scope)
+        self.assertEqual(serializer.validated_data['access_scope'], 'glimra')
+
+    def test_create_true_rejects_existing_user_with_null_access_scope(self):
+        email = 'aaron@example.com'
+        User.objects.create(email=email, country='se', access_scope=None)
+
+        serializer = EmailAuthSerializer(data={
+            'email': email,
+            'country': 'se',
+            'create': True,
+        })
+
+        self.assertEqual(serializer.is_valid(), False)
+        self.assertIn('non_field_errors', serializer.errors)
+        self.assertEqual(User.objects.count(), 1)
+
     def test_unsupported_country_is_rejected(self):
         serializer = EmailAuthSerializer(data={
             'email': 'aaron@example.com',
@@ -130,7 +182,7 @@ class AccessScopeMappingTests(APITestCase):
         self.assertEqual(se_serializer.validated_data['user'], glimra_user)
         self.assertEqual(fi_serializer.validated_data['user'], juhlapesu_user)
 
-    def test_existing_email_fails_registration_in_same_access_scope(self):
+    def test_existing_email_registration_is_rejected_in_same_country(self):
         email = 'aaron@example.com'
         User.objects.create(email=email, country='se', access_scope='glimra', digilets=1)
 
@@ -142,6 +194,7 @@ class AccessScopeMappingTests(APITestCase):
 
         self.assertEqual(serializer.is_valid(), False)
         self.assertIn('non_field_errors', serializer.errors)
+        self.assertEqual(User.objects.count(), 1)
 
     def test_same_mobile_can_exist_in_different_access_scopes(self):
         mobile = '+15551234567'
@@ -156,7 +209,7 @@ class AccessScopeMappingTests(APITestCase):
         self.assertEqual(se_serializer.validated_data['user'], glimra_user)
         self.assertEqual(fi_serializer.validated_data['user'], juhlapesu_user)
 
-    def test_existing_mobile_fails_registration_in_same_access_scope(self):
+    def test_existing_mobile_registration_is_rejected_in_same_country(self):
         mobile = '+15551234567'
         User.objects.create(mobile=mobile, country='se', access_scope='glimra', digilets=1)
 
@@ -168,6 +221,85 @@ class AccessScopeMappingTests(APITestCase):
 
         self.assertEqual(serializer.is_valid(), False)
         self.assertIn('non_field_errors', serializer.errors)
+        self.assertEqual(User.objects.count(), 1)
+
+
+class NullAccessScopeLoginCallbackTokenTests(APITestCase):
+
+    def tearDown(self):
+        api_settings.PASSWORDLESS_TEST_SUPPRESSION = DEFAULTS['PASSWORDLESS_TEST_SUPPRESSION']
+        api_settings.PASSWORDLESS_AUTH_TYPES = DEFAULTS['PASSWORDLESS_AUTH_TYPES']
+        api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS = DEFAULTS['PASSWORDLESS_EMAIL_NOREPLY_ADDRESS']
+        api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS_FI = DEFAULTS['PASSWORDLESS_EMAIL_NOREPLY_ADDRESS_FI']
+        api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER = DEFAULTS['PASSWORDLESS_MOBILE_NOREPLY_NUMBER']
+        api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER_FI = DEFAULTS['PASSWORDLESS_MOBILE_NOREPLY_NUMBER_FI']
+
+    def test_existing_se_email_with_null_access_scope_can_request_token(self):
+        api_settings.PASSWORDLESS_AUTH_TYPES = ['EMAIL']
+        api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS = 'noreply@example.com'
+        user = User.objects.create(email='se@example.com', country='se', access_scope=None)
+
+        response = self.client.post('/auth/email/', {'email': user.email, 'country': 'se'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(CallbackToken.objects.filter(user=user, is_active=True).count(), 1)
+        user.refresh_from_db()
+        self.assertIsNone(user.access_scope)
+
+    def test_existing_fi_email_with_null_access_scope_can_request_token(self):
+        api_settings.PASSWORDLESS_AUTH_TYPES = ['EMAIL']
+        api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS = 'noreply@example.com'
+        api_settings.PASSWORDLESS_EMAIL_NOREPLY_ADDRESS_FI = 'noreply-fi@example.com'
+        user = User.objects.create(email='fi@example.com', country='fi', access_scope=None)
+
+        response = self.client.post('/auth/email/', {'email': user.email, 'country': 'fi'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(CallbackToken.objects.filter(user=user, is_active=True).count(), 1)
+        user.refresh_from_db()
+        self.assertIsNone(user.access_scope)
+
+    def test_existing_se_mobile_with_null_access_scope_can_request_token(self):
+        api_settings.PASSWORDLESS_TEST_SUPPRESSION = True
+        api_settings.PASSWORDLESS_AUTH_TYPES = ['MOBILE']
+        api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER = '+15550000000'
+        user = User.objects.create(mobile='+15551234567', country='se', access_scope=None)
+
+        response = self.client.post('/auth/mobile/', {'mobile': user.mobile, 'country': 'se'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(CallbackToken.objects.filter(user=user, is_active=True).count(), 1)
+        user.refresh_from_db()
+        self.assertIsNone(user.access_scope)
+
+    def test_existing_fi_mobile_with_null_access_scope_can_request_token(self):
+        api_settings.PASSWORDLESS_TEST_SUPPRESSION = True
+        api_settings.PASSWORDLESS_AUTH_TYPES = ['MOBILE']
+        api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER_FI = '+358500000000'
+        user = User.objects.create(mobile='+15557654321', country='fi', access_scope=None)
+
+        response = self.client.post('/auth/mobile/', {'mobile': user.mobile, 'country': 'fi'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(CallbackToken.objects.filter(user=user, is_active=True).count(), 1)
+        user.refresh_from_db()
+        self.assertIsNone(user.access_scope)
+
+    def test_existing_mobile_create_request_is_rejected_without_sending_token(self):
+        api_settings.PASSWORDLESS_TEST_SUPPRESSION = True
+        api_settings.PASSWORDLESS_AUTH_TYPES = ['MOBILE']
+        api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER = '+15550000000'
+        user = User.objects.create(mobile='+15559876543', country='se', access_scope=None)
+
+        response = self.client.post('/auth/mobile/', {
+            'mobile': user.mobile,
+            'country': 'se',
+            'create': True,
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(CallbackToken.objects.filter(user=user, is_active=True).count(), 0)
+        self.assertEqual(User.objects.count(), 1)
 
 
 class EmailLoginCallbackTokenTests(APITestCase):
@@ -286,6 +418,22 @@ class MobileSignUpCallbackTokenTests(APITestCase):
 
         # Verify a token exists for the user
         self.assertEqual(CallbackToken.objects.filter(user=user, is_active=True).exists(), 1)
+
+    def test_second_mobile_signup_request_is_rejected(self):
+        mobile = '+15551234567'
+        data = {'mobile': mobile, 'create': True}
+
+        first_response = self.client.post(self.url, data)
+        self.assertEqual(first_response.status_code, status.HTTP_200_OK)
+
+        user = User.objects.get(**{self.mobile_field_name: mobile})
+        CallbackToken.objects.filter(user=user).delete()
+
+        second_response = self.client.post(self.url, data)
+
+        self.assertEqual(second_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(User.objects.filter(**{self.mobile_field_name: mobile}).count(), 1)
+        self.assertEqual(CallbackToken.objects.filter(user=user, is_active=True).count(), 0)
 
     def test_mobile_signup_disabled(self):
         api_settings.PASSWORDLESS_REGISTER_NEW_USERS = False
