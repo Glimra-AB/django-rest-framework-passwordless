@@ -44,6 +44,6 @@ class CustomUser(AbstractBaseUser):
     class Meta:
         app_label = 'tests'
         unique_together = (
-            ('email', 'access_scope'),
-            ('mobile', 'access_scope'),
+            ('email', 'country'),
+            ('mobile', 'country'),
         )
