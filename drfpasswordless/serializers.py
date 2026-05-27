@@ -87,8 +87,8 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
         # We know this is there as it's marked required in the serializer field (email or mobile) below
         alias = attrs.get(self.alias_type)
         
-        # Since phone number / email are unique by access scope.
-        # Keep country in the API for compatibility, and map it internally.
+        # Keep country in the API for compatibility. Existing-user lookups must
+        # stay country-based while access_scope is only populated for new users.
         country, access_scope = get_country_and_access_scope(attrs.get('country'))
 
         if alias:
@@ -99,28 +99,33 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                 # We can optionally allow registration of more user model fields at the same time, these are
                 # whitelisted in the settings variable and filtered here before passed to get_or_create
 
+                for reqkey in api_settings.PASSWORDLESS_USER_CREATION_FIELDS_REQ:
+                    if attrs.get(reqkey, None) is None:
+                        raise serializers.ValidationError('Field %s missing while creating new user' % reqkey)
+
                 if country == 'se':
                     default_digilets = api_settings.PASSWORDLESS_SE_NEW_USER_DIGILETS 
                 else:
                     default_digilets = api_settings.PASSWORDLESS_FI_NEW_USER_DIGILETS 
 
-                new_user_attrs = { self.alias_type: alias, 'country': country,
-                                   'access_scope': access_scope, 'digilets': default_digilets }
+                user_lookup_attrs = { self.alias_type: alias, 'country': country }
+                filtered_creation_attrs = {
+                    fkey: attrs[fkey]
+                    for fkey in api_settings.PASSWORDLESS_USER_CREATION_FIELDS
+                    if fkey not in user_lookup_attrs and attrs.get(fkey, None) is not None
+                }
+                new_user_defaults = {
+                    'access_scope': access_scope,
+                    'digilets': default_digilets,
+                    **filtered_creation_attrs,
+                }
+                # Use alias and country for existence checks so users without access_scope populated are still detected.
+                # access_scope and the other defaults are only applied when a new user is created.
+                if UserModel.objects.filter(**user_lookup_attrs).exists():
+                    raise serializers.ValidationError('User email or mobile already taken')
 
-                for fkey in api_settings.PASSWORDLESS_USER_CREATION_FIELDS:
-                    val = attrs.get(fkey, None)
-                    if val is not None:
-                        new_user_attrs[fkey] = val
-                for reqkey in api_settings.PASSWORDLESS_USER_CREATION_FIELDS_REQ:
-                    if not reqkey in new_user_attrs:
-                        raise serializers.ValidationError('Field %s missing while creating new user' % reqkey)
-                # The get_or_create is to make the register API call idempotent, so if it's repeated, you get the same result.
-                # If we use only create here, the first call would create the user and the second call would return the validationerror.
-                #
-                # We get db integrity exceptions if we try to create a new user with the same email and/or mobile, even if
-                # the other fields are different, which is good.
                 try:
-                    user, created = UserModel.objects.get_or_create(**new_user_attrs)
+                    user = UserModel.objects.create(**user_lookup_attrs, **new_user_defaults)
                 except IntegrityError:
                     raise serializers.ValidationError('User email or mobile already taken')
             else:
@@ -128,7 +133,7 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                 try:
                     # TODO: allow updating the user with the new attrs at this point, if the user is not validated on either of the
                     # email or phone yet but is still existing in the database.
-                    user = UserModel.objects.get(**{self.alias_type: alias, 'access_scope': access_scope})
+                    user = UserModel.objects.get(**{self.alias_type: alias, 'country': country})
                 except UserModel.DoesNotExist:
                     user = None
 
