@@ -419,6 +419,32 @@ class MobileSignUpCallbackTokenTests(APITestCase):
         # Verify a token exists for the user
         self.assertEqual(CallbackToken.objects.filter(user=user, is_active=True).exists(), 1)
 
+    def test_same_mobile_can_signup_in_different_countries(self):
+        mobile = '+15551234567'
+        api_settings.PASSWORDLESS_MOBILE_NOREPLY_NUMBER_FI = '+358500000000'
+
+        se_response = self.client.post(self.url, {
+            'mobile': mobile,
+            'country': 'se',
+            'create': True,
+        })
+        fi_response = self.client.post(self.url, {
+            'mobile': mobile,
+            'country': 'fi',
+            'create': True,
+        })
+
+        self.assertEqual(se_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(fi_response.status_code, status.HTTP_200_OK)
+
+        se_user = User.objects.get(**{self.mobile_field_name: mobile, 'country': 'se'})
+        fi_user = User.objects.get(**{self.mobile_field_name: mobile, 'country': 'fi'})
+        self.assertEqual(se_user.access_scope, 'glimra')
+        self.assertEqual(fi_user.access_scope, 'juhlapesu')
+        self.assertEqual(User.objects.filter(**{self.mobile_field_name: mobile}).count(), 2)
+        self.assertEqual(CallbackToken.objects.filter(user=se_user, is_active=True).count(), 1)
+        self.assertEqual(CallbackToken.objects.filter(user=fi_user, is_active=True).count(), 1)
+
     def test_second_mobile_signup_request_is_rejected(self):
         mobile = '+15551234567'
         data = {'mobile': mobile, 'create': True}
