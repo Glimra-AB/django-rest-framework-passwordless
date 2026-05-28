@@ -8,6 +8,7 @@ from rest_framework import serializers
 from drfpasswordless.models import CallbackToken, RefreshToken
 from drfpasswordless.settings import api_settings
 from drfpasswordless.utils import verify_user_alias
+from django.db import transaction
 from django.db.utils import IntegrityError
 
 from glimra.base.fields import PhoneNumberSerializerField
@@ -119,13 +120,14 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                     'digilets': default_digilets,
                     **filtered_creation_attrs,
                 }
-                # Use alias and country for existence checks so users without access_scope populated are still detected.
-                # access_scope and the other defaults are only applied when a new user is created.
-                if UserModel.objects.filter(**user_lookup_attrs).exists():
-                    raise serializers.ValidationError('User email or mobile already taken')
-
                 try:
-                    user = UserModel.objects.create(**user_lookup_attrs, **new_user_defaults)
+                    with transaction.atomic():
+                        # Use alias and country for existence checks so users without access_scope populated are still detected.
+                        # access_scope and the other defaults are only applied when a new user is created.
+                        if UserModel.objects.filter(**user_lookup_attrs).exists():
+                            raise serializers.ValidationError('User email or mobile already taken')
+
+                        user = UserModel.objects.create(**user_lookup_attrs, **new_user_defaults)
                 except IntegrityError:
                     raise serializers.ValidationError('User email or mobile already taken')
             else:
