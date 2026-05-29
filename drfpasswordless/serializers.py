@@ -16,23 +16,44 @@ from glimra.base.fields import PhoneNumberSerializerField
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
 
+ACCESS_SCOPE_TO_COUNTRY = {
+    'glimra': 'se',
+    'juhlapesu': 'fi',
+}
 COUNTRY_TO_ACCESS_SCOPE = {
-    'se': 'glimra',
-    'fi': 'juhlapesu',
+    country: access_scope for access_scope, country in ACCESS_SCOPE_TO_COUNTRY.items()
 }
 DEFAULT_COUNTRY = 'se'
 
 
-def get_country_and_access_scope(country):
-    country = country or DEFAULT_COUNTRY
-    country = country.lower()
+def get_country_and_access_scope(country=None, access_scope=None):
+    country = country.lower() if country else None
+    access_scope = access_scope.lower() if access_scope else None
 
-    try:
-        return country, COUNTRY_TO_ACCESS_SCOPE[country]
-    except KeyError:
+    if access_scope and access_scope not in ACCESS_SCOPE_TO_COUNTRY:
+        raise serializers.ValidationError({
+            'access_scope': _('Unsupported access scope.')
+        })
+
+    if country and country not in COUNTRY_TO_ACCESS_SCOPE:
         raise serializers.ValidationError({
             'country': _('Unsupported country.')
         })
+
+    if country and access_scope:
+        expected_country = ACCESS_SCOPE_TO_COUNTRY[access_scope]
+        if country != expected_country:
+            raise serializers.ValidationError({
+                'country': _('Country does not match access scope.')
+            })
+
+    if access_scope:
+        country = ACCESS_SCOPE_TO_COUNTRY[access_scope]
+    else:
+        country = country or DEFAULT_COUNTRY
+        access_scope = COUNTRY_TO_ACCESS_SCOPE[country]
+
+    return country, access_scope
 
 
 class TokenField(serializers.CharField):
@@ -76,6 +97,9 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
     # The country of which the user belongs to
     country = serializers.CharField(required=False)
 
+    # The access scope of which the user belongs to
+    access_scope = serializers.CharField(required=False)
+
     @property
     def alias_type(self):
         # The alias type, either email or mobile
@@ -89,8 +113,11 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
         alias = attrs.get(self.alias_type)
 
         # Since phone number / email are unique by access scope.
-        # Keep country in the API for compatibility, and map it internally.
-        country, access_scope = get_country_and_access_scope(attrs.get('country'))
+        # Keep country in the API for compatibility, and allow clients to pass access_scope directly.
+        country, access_scope = get_country_and_access_scope(
+            attrs.get('country'),
+            attrs.get('access_scope')
+        )
 
         if alias:
             # Create or authenticate a user and return it. The client has to explicitly request creation by 'create',
