@@ -87,9 +87,9 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
     def validate(self, attrs):
         # We know this is there as it's marked required in the serializer field (email or mobile) below
         alias = attrs.get(self.alias_type)
-        
-        # Keep country in the API for compatibility. Existing-user lookups must
-        # stay country-based while access_scope is only populated for new users.
+
+        # Since phone number / email are unique by access scope.
+        # Keep country in the API for compatibility, and map it internally.
         country, access_scope = get_country_and_access_scope(attrs.get('country'))
 
         if alias:
@@ -109,21 +109,22 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                 else:
                     default_digilets = api_settings.PASSWORDLESS_FI_NEW_USER_DIGILETS 
 
-                user_lookup_attrs = { self.alias_type: alias, 'country': country }
-                filtered_creation_attrs = {
-                    fkey: attrs[fkey]
-                    for fkey in api_settings.PASSWORDLESS_USER_CREATION_FIELDS
-                    if fkey not in user_lookup_attrs and attrs.get(fkey, None) is not None
-                }
+                user_lookup_attrs = {self.alias_type: alias, 'access_scope': access_scope}
+                # Country is handled above so we always store the normalized value,
+                # not the raw request value from PASSWORDLESS_USER_CREATION_FIELDS.
+                filtered_creation_attrs = {}
+                for fkey in api_settings.PASSWORDLESS_USER_CREATION_FIELDS:
+                    if fkey in user_lookup_attrs or fkey == 'country':
+                        continue
+                    if attrs.get(fkey, None) is not None:
+                        filtered_creation_attrs[fkey] = attrs[fkey]
                 new_user_defaults = {
-                    'access_scope': access_scope,
+                    'country': country,
                     'digilets': default_digilets,
                     **filtered_creation_attrs,
                 }
                 try:
                     with transaction.atomic():
-                        # Use alias and country for existence checks so users without access_scope populated are still detected.
-                        # access_scope and the other defaults are only applied when a new user is created.
                         if UserModel.objects.filter(**user_lookup_attrs).exists():
                             raise serializers.ValidationError('User email or mobile already taken')
 
@@ -135,7 +136,7 @@ class AbstractBaseAliasAuthenticationSerializer(serializers.Serializer):
                 try:
                     # TODO: allow updating the user with the new attrs at this point, if the user is not validated on either of the
                     # email or phone yet but is still existing in the database.
-                    user = UserModel.objects.get(**{self.alias_type: alias, 'country': country})
+                    user = UserModel.objects.get(**{self.alias_type: alias, 'access_scope': access_scope})
                 except UserModel.DoesNotExist:
                     user = None
 
