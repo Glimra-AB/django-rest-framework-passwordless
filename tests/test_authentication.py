@@ -152,18 +152,15 @@ class AccessScopeMappingTests(APITestCase):
         self.assertEqual(serializer.validated_data['country'], 'fi')
         self.assertEqual(serializer.validated_data['access_scope'], 'juhlapesu')
 
-    def test_matching_country_and_access_scope_are_accepted(self):
+    def test_matching_country_and_access_scope_are_rejected(self):
         serializer = EmailAuthSerializer(data={
             'email': 'aaron@example.com',
             'country': 'fi',
             'access_scope': 'juhlapesu',
             'create': True,
         })
-        self.assertEqual(serializer.is_valid(), True)
-
-        user = serializer.validated_data['user']
-        self.assertEqual(user.country, 'fi')
-        self.assertEqual(user.access_scope, 'juhlapesu')
+        self.assertEqual(serializer.is_valid(), False)
+        self.assertIn('access_scope', serializer.errors)
 
     def test_mismatched_country_and_access_scope_are_rejected(self):
         serializer = EmailAuthSerializer(data={
@@ -173,7 +170,7 @@ class AccessScopeMappingTests(APITestCase):
             'create': True,
         })
         self.assertEqual(serializer.is_valid(), False)
-        self.assertIn('country', serializer.errors)
+        self.assertIn('access_scope', serializer.errors)
 
     def test_unsupported_country_is_rejected(self):
         serializer = EmailAuthSerializer(data={

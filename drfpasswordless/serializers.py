@@ -30,6 +30,11 @@ def get_country_and_access_scope(country=None, access_scope=None):
     country = country.lower() if country else None
     access_scope = access_scope.lower() if access_scope else None
 
+    if country and access_scope:
+        raise serializers.ValidationError({
+            'access_scope': _('Do not provide both country and access scope.')
+        })
+
     if access_scope and access_scope not in ACCESS_SCOPE_TO_COUNTRY:
         raise serializers.ValidationError({
             'access_scope': _('Unsupported access scope.')
@@ -39,13 +44,6 @@ def get_country_and_access_scope(country=None, access_scope=None):
         raise serializers.ValidationError({
             'country': _('Unsupported country.')
         })
-
-    if country and access_scope:
-        expected_country = ACCESS_SCOPE_TO_COUNTRY[access_scope]
-        if country != expected_country:
-            raise serializers.ValidationError({
-                'country': _('Country does not match access scope.')
-            })
 
     if access_scope:
         country = ACCESS_SCOPE_TO_COUNTRY[access_scope]
